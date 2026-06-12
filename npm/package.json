@@ -1,0 +1,43 @@
+{
+  "name": "not-ace-tool-rs",
+  "version": "0.1.12",
+  "private": true,
+  "description": "MCP server for codebase indexing, semantic search, and prompt enhancement",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/missdeer/not-ace-tool-rs.git"
+  },
+  "author": "missdeer",
+  "license": "GPL-3.0-only OR LicenseRef-Commercial",
+  "bugs": {
+    "url": "https://github.com/missdeer/not-ace-tool-rs/issues"
+  },
+  "homepage": "https://github.com/missdeer/not-ace-tool-rs#readme",
+  "keywords": [
+    "mcp",
+    "codebase",
+    "indexing",
+    "semantic-search",
+    "prompt-enhancement",
+    "rust",
+    "cli"
+  ],
+  "bin": {
+    "not-ace-tool-rs": "run.js"
+  },
+  "files": [
+    "run.js"
+  ],
+  "engines": {
+    "node": ">=14.14.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
+}
