@@ -7,14 +7,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/missdeer/not-ace-tool-rs.git"
+    "url": "git+https://github.com/linze0721/notace-tool-rs.git"
   },
   "author": "missdeer",
   "license": "GPL-3.0-only OR LicenseRef-Commercial",
   "bugs": {
-    "url": "https://github.com/missdeer/not-ace-tool-rs/issues"
+    "url": "https://github.com/linze0721/notace-tool-rs/issues"
   },
-  "homepage": "https://github.com/missdeer/not-ace-tool-rs#readme",
+  "homepage": "https://github.com/linze0721/notace-tool-rs#readme",
   "keywords": [
     "mcp",
     "codebase",

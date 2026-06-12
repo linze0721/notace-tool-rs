@@ -2,7 +2,7 @@
 
 set -e
 
-REPO="missdeer/not-ace-tool-rs"
+REPO="linze0721/notace-tool-rs"
 INSTALL_DIR="/opt/not-ace-tool-rs"
 BINARY_NAME="not-ace-tool-rs"
 

@@ -3,12 +3,12 @@ name: Release
 on:
   push:
     branches:
-      - master
+      - main
     tags:
       - "v*"
   pull_request:
     branches:
-      - master
+      - main
 
 permissions:
   contents: write
@@ -167,7 +167,7 @@ jobs:
             artifacts/SHA256SUMS
           generate_release_notes: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish-npm-platforms:
     name: Publish ${{ matrix.platform }} to NPM

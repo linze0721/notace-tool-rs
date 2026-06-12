@@ -5,7 +5,7 @@
   "license": "GPL-3.0-only OR LicenseRef-Commercial",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/missdeer/ace-tool-rs.git"
+    "url": "git+https://github.com/linze0721/notace-tool-rs.git"
   },
   "os": ["win32"],
   "cpu": ["arm64"],

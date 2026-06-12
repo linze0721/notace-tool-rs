@@ -88,6 +88,6 @@ Ensure your system has the required extraction tools:
 
 ## License
 
-This package is part of the Not ACE fork vendored from [upstream ace-tool-rs](https://github.com/missdeer/ace-tool-rs) and is licensed under GPL-3.0.
+This package is part of the Not ACE fork vendored from [upstream ace-tool-rs](https://github.com/linze0721/notace-tool-rs) and is licensed under GPL-3.0.
 
 For commercial use, please contact missdeer@gmail.com for licensing options.

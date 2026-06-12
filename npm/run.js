@@ -15,8 +15,8 @@ const crypto = require("crypto");
 
 const PACKAGE_NAME = "not-ace-tool-rs";
 const DISPLAY_PACKAGE_NAME = "not-ace-tool-rs";
-const REPO_OWNER = "missdeer";
-const REPO_NAME = "not-ace-tool-rs";
+const REPO_OWNER = "linze0721";
+const REPO_NAME = "notace-tool-rs";
 const MAX_REDIRECTS = 10;
 const REQUEST_TIMEOUT = 60000; // 60 seconds
 const MAX_RETRIES = 3;
@@ -512,7 +512,7 @@ async function downloadAndExtract(cacheDir) {
     console.error("");
     console.error("You can install manually:");
     console.error(
-      "  1. Download from https://github.com/missdeer/not-ace-tool-rs/releases"
+      "  1. Download from https://github.com/linze0721/notace-tool-rs/releases"
     );
     console.error(`  2. Place binary at: ${binaryPath}`);
     console.error("");
