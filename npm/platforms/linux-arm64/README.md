@@ -23,7 +23,7 @@ This project is dual-licensed:
 - **Non-Commercial / Personal Use**: GNU General Public License v3.0
 - **Commercial / Workplace Use**: Commercial License Required
 
-See the upstream [ace-tool-rs repository](https://github.com/linze0721/notace-tool-rs) for historical license details.
+See the upstream [ace-tool-rs repository](https://github.com/missdeer/ace-tool-rs) for historical license details.
 
 ## Author
 
