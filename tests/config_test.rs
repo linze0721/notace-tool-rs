@@ -42,11 +42,12 @@ impl Drop for EnvVarGuard {
     }
 }
 
-fn clear_not_ace_env() -> [EnvVarGuard; 3] {
+fn clear_not_ace_env() -> [EnvVarGuard; 4] {
     [
         EnvVarGuard::clear("ACE_CONTAINER_TAG"),
         EnvVarGuard::clear("ACE_ENABLE_MEMORY_TOOLS"),
         EnvVarGuard::clear("ACE_ENABLE_TASTE_TOOLS"),
+        EnvVarGuard::clear("ACE_ENABLE_TASK_TOOLS"),
     ]
 }
 
@@ -119,6 +120,7 @@ fn test_config_default_values() {
     assert_eq!(config.container_tag, "default");
     assert!(config.enable_memory_tools);
     assert!(config.enable_taste_tools);
+    assert!(config.enable_task_tools);
     assert_eq!(config.retrieval_timeout_secs, 60);
     assert!(!config.no_adaptive);
     assert!(!config.no_webbrowser_enhance_prompt);
@@ -141,6 +143,7 @@ fn test_config_with_custom_values() {
             container_tag: Some("custom-container".to_string()),
             enable_memory_tools: Some(false),
             enable_taste_tools: Some(false),
+            enable_task_tools: Some(false),
             no_adaptive: true,
             no_webbrowser_enhance_prompt: true,
             force_xdg_open: false,
@@ -151,6 +154,7 @@ fn test_config_with_custom_values() {
     assert_eq!(config.container_tag, "custom-container");
     assert!(!config.enable_memory_tools);
     assert!(!config.enable_taste_tools);
+    assert!(!config.enable_task_tools);
     assert_eq!(config.retrieval_timeout_secs, 120);
     assert!(config.no_adaptive);
     assert!(config.no_webbrowser_enhance_prompt);
@@ -168,6 +172,7 @@ fn test_config_options_default() {
     assert!(options.container_tag.is_none());
     assert!(options.enable_memory_tools.is_none());
     assert!(options.enable_taste_tools.is_none());
+    assert!(options.enable_task_tools.is_none());
     assert!(!options.no_adaptive);
     assert!(!options.no_webbrowser_enhance_prompt);
 }
@@ -178,11 +183,13 @@ fn test_config_reads_container_and_tool_flags_from_env() {
     let _container = EnvVarGuard::set("ACE_CONTAINER_TAG", "env-container");
     let _memory = EnvVarGuard::set("ACE_ENABLE_MEMORY_TOOLS", "off");
     let _taste = EnvVarGuard::set("ACE_ENABLE_TASTE_TOOLS", "0");
+    let _task = EnvVarGuard::set("ACE_ENABLE_TASK_TOOLS", "false");
 
     let config = test_config("https://api.example.com", "test-token").unwrap();
     assert_eq!(config.container_tag, "env-container");
     assert!(!config.enable_memory_tools);
     assert!(!config.enable_taste_tools);
+    assert!(!config.enable_task_tools);
 }
 
 #[test]
@@ -190,20 +197,25 @@ fn test_config_env_flags_disabled_values() {
     let _guard = env_lock().lock().unwrap();
     let _memory = EnvVarGuard::clear("ACE_ENABLE_MEMORY_TOOLS");
     let _taste = EnvVarGuard::clear("ACE_ENABLE_TASTE_TOOLS");
+    let _task = EnvVarGuard::clear("ACE_ENABLE_TASK_TOOLS");
 
     for disabled_value in ["disabled", "false", "off", "0", " Disabled "] {
         std::env::set_var("ACE_ENABLE_MEMORY_TOOLS", disabled_value);
         std::env::set_var("ACE_ENABLE_TASTE_TOOLS", disabled_value);
+        std::env::set_var("ACE_ENABLE_TASK_TOOLS", disabled_value);
         let config = test_config("https://api.example.com", "test-token").unwrap();
         assert!(!config.enable_memory_tools, "memory flag {disabled_value}");
         assert!(!config.enable_taste_tools, "taste flag {disabled_value}");
+        assert!(!config.enable_task_tools, "task flag {disabled_value}");
     }
 
     std::env::set_var("ACE_ENABLE_MEMORY_TOOLS", "yes");
     std::env::set_var("ACE_ENABLE_TASTE_TOOLS", "true");
+    std::env::set_var("ACE_ENABLE_TASK_TOOLS", "true");
     let config = test_config("https://api.example.com", "test-token").unwrap();
     assert!(config.enable_memory_tools);
     assert!(config.enable_taste_tools);
+    assert!(config.enable_task_tools);
 }
 
 #[test]
@@ -255,6 +267,9 @@ fn test_config_new_for_third_party_enhancer() {
     assert!(config.token.is_empty());
     assert_eq!(config.max_lines_per_blob, 800);
     assert_eq!(config.retrieval_timeout_secs, 60);
+    assert!(config.enable_memory_tools);
+    assert!(config.enable_taste_tools);
+    assert!(config.enable_task_tools);
     assert!(!config.no_adaptive);
     // Third-party enhancer mode disables web browser interaction
     assert!(config.no_webbrowser_enhance_prompt);

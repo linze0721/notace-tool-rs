@@ -105,6 +105,7 @@ not-ace-tool-rs --base-url <API_URL> --token <AUTH_TOKEN>
 | `ACE_CONTAINER_TAG` | Default container tag used by memory, recall, memory management, batch learning, and Taste tools when `--container-tag` is not supplied |
 | `ACE_ENABLE_MEMORY_TOOLS` | Control `memory`, `recall`, `memory_forget`, `memory_list`, `memory_profile`, `memory_event`, and `batch_learn` exposure. Set to `disabled`, `false`, `0`, or `off` to hide and reject these tools |
 | `ACE_ENABLE_TASTE_TOOLS` | Control `taste_context` and `taste_profile` exposure. Set to `disabled`, `false`, `0`, or `off` to hide and reject these tools |
+| `ACE_ENABLE_TASK_TOOLS` | Control `task_group`, `task`, `plan`, and `ask_project` exposure. Set to `disabled`, `false`, `0`, or `off` to hide and reject these tools. Default enabled. |
 
 ### Example
 
@@ -207,6 +208,10 @@ $ cat settings.local.json
       "mcp__not-ace-tool__memory_profile",
       "mcp__not-ace-tool__memory_event",
       "mcp__not-ace-tool__batch_learn",
+      "mcp__not-ace-tool__task_group",
+      "mcp__not-ace-tool__task",
+      "mcp__not-ace-tool__plan",
+      "mcp__not-ace-tool__ask_project",
       "mcp__not-ace-tool__taste_context",
       "mcp__not-ace-tool__taste_profile"
     ]
@@ -217,6 +222,7 @@ $ cat settings.local.json
 ### Available Tools
 
 Memory tools (`memory`, `recall`, `memory_forget`, `memory_list`, `memory_profile`, `memory_event`, and `batch_learn`) are gated by `ACE_ENABLE_MEMORY_TOOLS`.
+Task tools (`task_group`, `task`, `plan`, `ask_project`) are gated by `ACE_ENABLE_TASK_TOOLS`.
 
 #### `search_context`
 
@@ -372,6 +378,88 @@ Import a batch of prompts/events for learning.
 | `container_tag` | string | No | Container override; defaults to configured container tag |
 | `source` | string | No | Source label such as `session` or `cli` |
 
+#### `task_group`
+
+Manage server-side task groups (projects/plans). A task group binds a persistent cross-session todo list to a project.
+
+Actions: `create` (requires `name`, optional `blob_names`), `list`, and `delete` (requires `group_id`).
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `action` | string | Yes | `create`, `list`, or `delete` |
+| `name` | string | For `create` | Task group name |
+| `blob_names` | array<string> | No | Optional blob scope to bind when creating the task group |
+| `group_id` | string | For `delete` | Task group id |
+
+**Example:**
+
+```json
+{"action":"create","name":"Checkout refactor","blob_names":["src/main.rs"]}
+```
+
+#### `task`
+
+Manage tasks in a group. Use `add` with a tasks array to save a confirmed plan draft; batch adds are supported.
+
+Actions: `add` (requires `group_id` and `tasks` array), `update` (requires `task_id` plus `content`, `status`, or `sort_order`), `list` (optional `group_id` and `status_filter`), and `delete` (requires `task_id`). Statuses: `pending`, `in_progress`, `done`, `cancelled`.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `action` | string | Yes | `add`, `update`, `list`, or `delete` |
+| `group_id` | string | For `add`; optional for `list` | Task group id |
+| `tasks` | array<object> | For `add` | Tasks to add; each item requires `content` and may include `status` and `sort_order` |
+| `task_id` | string | For `update`/`delete` | Task id |
+| `content` | string | No | Updated task content |
+| `status` | string | No | Updated task status: `pending`, `in_progress`, `done`, or `cancelled` |
+| `sort_order` | integer | No | Updated sort order |
+| `status_filter` | string | No | Optional status filter for `list` |
+
+**Example:**
+
+```json
+{"action":"add","group_id":"tg_123","tasks":[{"content":"Add tests for task tools","status":"pending","sort_order":1}]}
+```
+
+#### `plan`
+
+Generate a draft todo list for a requirement using server-side codebase retrieval and project memory. Returns a DRAFT only; confirm with the user, then persist confirmed items via `task` (`action=add`).
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_root_path` | string | Yes | Absolute path to the project root directory |
+| `requirement` | string | Yes | Requirement to turn into a draft todo list |
+| `container_tag` | string | No | Optional memory container tag |
+
+**Example:**
+
+```json
+{"project_root_path":"/data/ace","requirement":"Document the new task MCP tools","container_tag":"ace"}
+```
+
+#### `ask_project`
+
+Ask a question about the project; returns a concise synthesized answer grounded in codebase retrieval and project memory.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_root_path` | string | Yes | Absolute path to the project root directory |
+| `question` | string | Yes | Question to answer about the project |
+| `container_tag` | string | No | Optional memory container tag |
+
+**Example:**
+
+```json
+{"project_root_path":"/data/ace","question":"Where are MCP tools registered?","container_tag":"ace"}
+```
+
 #### `taste_context`
 
 Retrieve Taste context relevant to the current task.
@@ -467,7 +555,8 @@ not-ace-tool-rs/
 │   │   ├── claude.rs    # Claude API (Anthropic)
 │   │   ├── openai.rs    # OpenAI API
 │   │   ├── gemini.rs    # Gemini API (Google)
-│   │   └── supermemory.rs # Supermemory memory, recall, Taste, and batch learning client
+│   │   ├── supermemory.rs # Supermemory memory, recall, Taste, and batch learning client
+│   │   └── tasks.rs       # Task groups, tasks, plan, and project Q&A client
 │   ├── strategy/
 │   │   ├── mod.rs
 │   │   ├── adaptive.rs  # AIMD algorithm implementation
@@ -482,6 +571,10 @@ not-ace-tool-rs/
 │   │   ├── memory_profile.rs  # Memory profile export tool
 │   │   ├── memory_event.rs    # Learning event tool
 │   │   ├── batch_learn.rs     # Batch learning tool
+│   │   ├── task_group.rs      # Task group management tool
+│   │   ├── task.rs            # Task management tool
+│   │   ├── plan.rs            # Draft plan generation tool
+│   │   ├── ask_project.rs     # Project Q&A tool
 │   │   ├── taste_context.rs   # Taste-aware context tool
 │   │   └── taste_profile.rs   # Taste profile export tool
 │   └── utils/

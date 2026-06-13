@@ -105,6 +105,7 @@ not-ace-tool-rs --base-url <API_URL> --token <AUTH_TOKEN>
 | `ACE_CONTAINER_TAG` | 未提供 `--container-tag` 时，memory、recall、记忆管理、批量学习和 Taste 工具使用的默认容器标签 |
 | `ACE_ENABLE_MEMORY_TOOLS` | 控制 `memory`、`recall`、`memory_forget`、`memory_list`、`memory_profile`、`memory_event` 和 `batch_learn` 的暴露。设置为 `disabled`、`false`、`0` 或 `off` 可隐藏并拒绝这些工具 |
 | `ACE_ENABLE_TASTE_TOOLS` | 控制 `taste_context` 和 `taste_profile` 的暴露。设置为 `disabled`、`false`、`0` 或 `off` 可隐藏并拒绝这些工具 |
+| `ACE_ENABLE_TASK_TOOLS` | 控制 `task_group`、`task`、`plan` 和 `ask_project` 的暴露。设置为 `disabled`、`false`、`0` 或 `off` 可隐藏并拒绝这些工具。默认启用。 |
 
 ### 示例
 
@@ -207,6 +208,10 @@ $ cat settings.local.json
       "mcp__not-ace-tool__memory_profile",
       "mcp__not-ace-tool__memory_event",
       "mcp__not-ace-tool__batch_learn",
+      "mcp__not-ace-tool__task_group",
+      "mcp__not-ace-tool__task",
+      "mcp__not-ace-tool__plan",
+      "mcp__not-ace-tool__ask_project",
       "mcp__not-ace-tool__taste_context",
       "mcp__not-ace-tool__taste_profile"
     ]
@@ -217,6 +222,7 @@ $ cat settings.local.json
 ### 可用工具
 
 记忆工具（`memory`、`recall`、`memory_forget`、`memory_list`、`memory_profile`、`memory_event` 和 `batch_learn`）受 `ACE_ENABLE_MEMORY_TOOLS` 门控。
+任务工具（`task_group`、`task`、`plan`、`ask_project`）受 `ACE_ENABLE_TASK_TOOLS` 门控。
 
 #### `search_context`
 
@@ -372,6 +378,88 @@ $ cat settings.local.json
 | `container_tag` | string | 否 | 容器覆盖；默认使用已配置的容器标签 |
 | `source` | string | 否 | 来源标签，例如 `session` 或 `cli` |
 
+#### `task_group`
+
+管理服务端任务组（项目/计划）。任务组将跨会话持久的 todo 列表绑定到项目。
+
+动作：`create`（需要 `name`，可选 `blob_names`）、`list` 和 `delete`（需要 `group_id`）。
+
+**参数：**
+
+| 参数 | 类型 | 必需 | 描述 |
+|------|------|------|------|
+| `action` | string | 是 | `create`、`list` 或 `delete` |
+| `name` | string | `create` 时 | 任务组名称 |
+| `blob_names` | array<string> | 否 | 创建任务组时可选绑定的 blob 范围 |
+| `group_id` | string | `delete` 时 | 任务组 id |
+
+**示例：**
+
+```json
+{"action":"create","name":"Checkout refactor","blob_names":["src/main.rs"]}
+```
+
+#### `task`
+
+管理任务组中的任务。使用带 tasks 数组的 `add` 保存已确认的计划草案；支持批量添加。
+
+动作：`add`（需要 `group_id` 和 `tasks` 数组）、`update`（需要 `task_id` 以及 `content`、`status` 或 `sort_order`）、`list`（可选 `group_id` 和 `status_filter`）和 `delete`（需要 `task_id`）。状态：`pending`、`in_progress`、`done`、`cancelled`。
+
+**参数：**
+
+| 参数 | 类型 | 必需 | 描述 |
+|------|------|------|------|
+| `action` | string | 是 | `add`、`update`、`list` 或 `delete` |
+| `group_id` | string | `add` 时；`list` 可选 | 任务组 id |
+| `tasks` | array<object> | `add` 时 | 要添加的任务；每项需要 `content`，可包含 `status` 和 `sort_order` |
+| `task_id` | string | `update`/`delete` 时 | 任务 id |
+| `content` | string | 否 | 更新后的任务内容 |
+| `status` | string | 否 | 更新后的任务状态：`pending`、`in_progress`、`done` 或 `cancelled` |
+| `sort_order` | integer | 否 | 更新后的排序值 |
+| `status_filter` | string | 否 | `list` 的可选状态过滤器 |
+
+**示例：**
+
+```json
+{"action":"add","group_id":"tg_123","tasks":[{"content":"Add tests for task tools","status":"pending","sort_order":1}]}
+```
+
+#### `plan`
+
+基于服务端代码库检索和项目记忆，为需求生成草案 todo 列表。仅返回草案；请先与用户确认，再通过 `task`（`action=add`）持久化已确认的条目。
+
+**参数：**
+
+| 参数 | 类型 | 必需 | 描述 |
+|------|------|------|------|
+| `project_root_path` | string | 是 | 项目根目录的绝对路径 |
+| `requirement` | string | 是 | 要转换为草案 todo 列表的需求 |
+| `container_tag` | string | 否 | 可选记忆容器标签 |
+
+**示例：**
+
+```json
+{"project_root_path":"/data/ace","requirement":"Document the new task MCP tools","container_tag":"ace"}
+```
+
+#### `ask_project`
+
+询问关于项目的问题；返回基于代码库检索和项目记忆的简洁综合答案。
+
+**参数：**
+
+| 参数 | 类型 | 必需 | 描述 |
+|------|------|------|------|
+| `project_root_path` | string | 是 | 项目根目录的绝对路径 |
+| `question` | string | 是 | 要询问的项目问题 |
+| `container_tag` | string | 否 | 可选记忆容器标签 |
+
+**示例：**
+
+```json
+{"project_root_path":"/data/ace","question":"Where are MCP tools registered?","container_tag":"ace"}
+```
+
 #### `taste_context`
 
 获取与当前任务相关的 Taste 上下文。
@@ -467,7 +555,8 @@ not-ace-tool-rs/
 │   │   ├── claude.rs    # Claude API (Anthropic)
 │   │   ├── openai.rs    # OpenAI API
 │   │   ├── gemini.rs    # Gemini API (Google)
-│   │   └── supermemory.rs # Supermemory memory、recall、Taste 和批量学习客户端
+│   │   ├── supermemory.rs # Supermemory memory、recall、Taste 和批量学习客户端
+│   │   └── tasks.rs       # 任务组、任务、计划和项目问答客户端
 │   ├── strategy/
 │   │   ├── mod.rs
 │   │   ├── adaptive.rs  # AIMD 算法实现
@@ -482,6 +571,10 @@ not-ace-tool-rs/
 │   │   ├── memory_profile.rs  # 记忆画像导出工具
 │   │   ├── memory_event.rs    # 学习事件工具
 │   │   ├── batch_learn.rs     # 批量学习工具
+│   │   ├── task_group.rs      # 任务组管理工具
+│   │   ├── task.rs            # 任务管理工具
+│   │   ├── plan.rs            # 草案计划生成工具
+│   │   ├── ask_project.rs     # 项目问答工具
 │   │   ├── taste_context.rs   # Taste 上下文工具
 │   │   └── taste_profile.rs   # Taste 画像导出工具
 │   └── utils/
