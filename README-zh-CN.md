@@ -114,6 +114,52 @@ not-ace-tool-rs --base-url <API_URL> --token <AUTH_TOKEN>
 RUST_LOG=debug not-ace-tool-rs --base-url https://api.example.com --token your-token-here
 ```
 
+## AI 编程助手 Prompt 指南
+
+如果你在构建 AI 编程助手（Claude Code、Cursor、Copilot、OpenCode 等），希望它**主动**使用这些工具，请将以下内容添加到 agent 的 system prompt 或 `AGENTS.md` 中：
+
+```markdown
+## 可用 MCP 工具（Not ACE）
+
+你可以通过 Not ACE MCP 服务器使用以下工具。请主动使用——不要等用户要求。
+
+### 工作流
+
+1. **开始任务前** → 调用 `recall(query)` 检查是否有相关的历史上下文，然后调用 `taste_context()` 加载用户偏好。
+2. **探索代码时** → 调用 `search_context(project_root_path, query)` 而不是猜测文件位置。这是你的主要代码搜索工具。
+3. **理解架构时** → 调用 `ask_project(project_root_path, question)` 获取需要代码库 + 记忆上下文综合的问题的答案。
+4. **规划工作时** → 调用 `plan(project_root_path, requirement)` 在写代码前生成基于实际代码库的 todo 列表。
+5. **工作过程中** → 调用 `memory_event(type, content)` 记录重要决策，例如用户修改了你的输出时使用 `type="user_edited_code"`。
+6. **完成工作后** → 调用 `memory(content)` 保存重要发现、模式或决策，供未来会话使用。
+
+### 工具参考
+
+| 工具 | 何时使用 |
+|------|----------|
+| `search_context` | 通过自然语言描述查找代码。**优先使用**，在读取文件或 grep 之前。 |
+| `ask_project` | 需要从代码 + 记忆中综合答案的问题。 |
+| `plan` | 将需求转化为基于实际代码库的可执行 todo 列表。 |
+| `recall` | 搜索历史记忆。**在会话开始时使用**，加载相关上下文。 |
+| `taste_context` | 获取用户编码偏好。**在做风格/架构决策前检查。** |
+| `taste_profile` | 导出完整偏好画像（markdown 或 JSON）。 |
+| `memory` | 保存持久知识：项目事实、决策、模式。 |
+| `memory_event` | 记录事件：`user_edited_code`、`assistant_response_accepted/rejected`、`preference_corrected`。 |
+| `batch_learn` | 批量导入多条提示词/会话用于学习。 |
+| `memory_list` | 列出容器中保存的记忆。 |
+| `memory_forget` | 通过 id 或精确内容删除记忆。 |
+| `memory_profile` | 导出包含观察和事实的记忆画像。 |
+| `task_group` | 创建/列出/删除持久任务组（项目）。 |
+| `task` | 在任务组中添加/更新/列出/删除任务。 |
+
+### 核心原则
+
+- **search_context 优先于 grep**：语义搜索即使不知道确切名称也能找到相关代码。
+- **工作前先 recall**：之前的会话可能保存了关于代码库的关键上下文。
+- **风格决策前先看 taste**：用户的偏好已被学习并存储——请尊重它们。
+- **发现后记入 memory**：如果你了解到了代码库的重要信息，保存下来供下次使用。
+- **实现前先 plan**：基于实际代码的计划能避免因错误假设而浪费工作。
+```
+
 ## Not ACE 记忆和 Taste 工具
 
 此修改版客户端暴露代码搜索、提示词增强、Supermemory 的 memory/recall/forget/list/profile 工具、事件学习、批量学习和 Taste 画像导出。
