@@ -114,6 +114,52 @@ not-ace-tool-rs --base-url <API_URL> --token <AUTH_TOKEN>
 RUST_LOG=debug not-ace-tool-rs --base-url https://api.example.com --token your-token-here
 ```
 
+## Prompt Guide for AI Coding Agents
+
+If you are building an AI coding agent (Claude Code, Cursor, Copilot, OpenCode, etc.) and want it to **proactively** use these tools, add the following to your agent's system prompt or `AGENTS.md`:
+
+```markdown
+## Available MCP Tools (Not ACE)
+
+You have access to the following tools through the Not ACE MCP server. Use them proactively — don't wait to be asked.
+
+### Workflow
+
+1. **Starting a task** → Call `recall(query)` to check for relevant past context, then `taste_context()` to load user preferences.
+2. **Exploring code** → Call `search_context(project_root_path, query)` instead of guessing file locations. This is your primary codebase search tool.
+3. **Understanding architecture** → Call `ask_project(project_root_path, question)` for questions that need codebase + memory context synthesized by LLM.
+4. **Planning work** → Call `plan(project_root_path, requirement)` to generate a grounded todo list before writing code.
+5. **During work** → Call `memory_event(type, content)` to record significant decisions, e.g. `type="user_edited_code"` when the user changes your output.
+6. **Finishing work** → Call `memory(content)` to save important discoveries, patterns, or decisions for future sessions.
+
+### Tool Reference
+
+| Tool | When to Use |
+|------|-------------|
+| `search_context` | Find code by natural language description. **Use this FIRST** before reading files or grepping. |
+| `ask_project` | Ask a question that needs synthesized answer from code + memory. |
+| `plan` | Turn a requirement into an actionable todo list grounded in the actual codebase. |
+| `recall` | Search past memories. **Use at session start** to load relevant context. |
+| `taste_context` | Get user's coding preferences. **Check before making style/architecture decisions.** |
+| `taste_profile` | Export full preference profile (markdown or JSON). |
+| `memory` | Save durable knowledge: project facts, decisions, patterns. |
+| `memory_event` | Record events: `user_edited_code`, `assistant_response_accepted/rejected`, `preference_corrected`. |
+| `batch_learn` | Import multiple prompts/sessions for learning. |
+| `memory_list` | List saved memories in a container. |
+| `memory_forget` | Delete a memory by id or exact content. |
+| `memory_profile` | Export memory profile with observations and facts. |
+| `task_group` | Create/list/delete persistent task groups (projects). |
+| `task` | Add/update/list/delete tasks within a group. |
+
+### Key Principles
+
+- **search_context over grep**: Semantic search finds relevant code even when you don't know exact names.
+- **recall before work**: Previous sessions may have saved critical context about the codebase.
+- **taste before style decisions**: The user's preferences are learned and stored — respect them.
+- **memory after discoveries**: If you learned something important about the codebase, save it for next time.
+- **plan before implementation**: A grounded plan prevents wasted work on wrong assumptions.
+```
+
 ## Not ACE Memory and Taste Tools
 
 This modified client exposes code search, prompt enhancement, Supermemory memory/recall/forget/list/profile tools, event learning, batch learning, and Taste profile export.
