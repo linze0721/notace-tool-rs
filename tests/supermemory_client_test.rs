@@ -16,7 +16,6 @@ fn test_config(base_url: String) -> Arc<Config> {
         container_tag: "default".to_string(),
         enable_memory_tools: true,
         enable_taste_tools: true,
-        enable_task_tools: true,
         enable_goal_tools: true,
         max_lines_per_blob: 800,
         retrieval_timeout_secs: 60,

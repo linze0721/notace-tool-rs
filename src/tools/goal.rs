@@ -9,8 +9,9 @@ use tracing::{error, info, warn};
 
 use crate::config::Config;
 use crate::index::IndexManager;
-use crate::service::goals::{AuditGoalRequest, CreateGoalRequest, GoalsClient, ListGoalsRequest};
-use crate::service::tasks::AgentBlobsPayload;
+use crate::service::goals::{
+    AgentBlobsPayload, AuditGoalRequest, CreateGoalRequest, GoalsClient, ListGoalsRequest,
+};
 
 /// Tool definition for MCP
 pub struct GoalToolDef {

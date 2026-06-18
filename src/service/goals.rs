@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::config::Config;
-use crate::service::tasks::AgentBlobsPayload;
 use crate::USER_AGENT;
 
 #[derive(Clone)]
@@ -22,6 +21,36 @@ pub struct CreateGoalRequest {
     pub blobs: AgentBlobsPayload,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub container_tag: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AgentBlobsPayload {
+    pub checkpoint_id: Value,
+    pub added_blobs: Vec<String>,
+    pub deleted_blobs: Vec<String>,
+}
+
+impl AgentBlobsPayload {
+    pub fn new(added_blobs: Vec<String>) -> Self {
+        Self {
+            checkpoint_id: Value::Null,
+            added_blobs,
+            deleted_blobs: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct AskProjectRequest {
+    pub question: String,
+    pub blobs: AgentBlobsPayload,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub container_tag: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AskProjectResponse {
+    pub answer: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -101,6 +130,10 @@ impl GoalsClient {
     pub async fn cancel_goal(&self, id: &str) -> Result<Value> {
         self.post(&format!("/v1/goals/{id}/cancel"), &EmptyRequest {})
             .await
+    }
+
+    pub async fn ask_project(&self, request: AskProjectRequest) -> Result<AskProjectResponse> {
+        self.post("/agents/ask", &request).await
     }
 
     pub async fn list_phases(&self, goal_id: &str) -> Result<Value> {
@@ -230,5 +263,25 @@ impl GoalsClient {
             return Err(anyhow!("request {path} failed ({status}): {body}"));
         }
         Ok(response.json::<R>().await?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn agent_blobs_serializes_checkpoint_id_as_null() {
+        let payload = AgentBlobsPayload::new(vec!["blob-a".to_string()]);
+
+        assert_eq!(
+            serde_json::to_value(payload).unwrap(),
+            json!({
+                "checkpoint_id": null,
+                "added_blobs": ["blob-a"],
+                "deleted_blobs": []
+            })
+        );
     }
 }

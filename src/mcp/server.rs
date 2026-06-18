@@ -20,22 +20,18 @@ use crate::tools::memory_event::{MemoryEventArgs, MemoryEventToolDef, MEMORY_EVE
 use crate::tools::memory_forget::{MemoryForgetArgs, MemoryForgetToolDef, MEMORY_FORGET_TOOL};
 use crate::tools::memory_list::{MemoryListArgs, MemoryListToolDef, MEMORY_LIST_TOOL};
 use crate::tools::memory_profile::{MemoryProfileArgs, MemoryProfileToolDef, MEMORY_PROFILE_TOOL};
-use crate::tools::plan::{PlanArgs, PlanToolDef, PLAN_TOOL};
 use crate::tools::recall::{RecallArgs, RecallToolDef, RECALL_TOOL};
 use crate::tools::search_context::{SearchContextArgs, SearchContextToolDef, SEARCH_CONTEXT_TOOL};
 use crate::tools::search_images::{SearchImagesArgs, SearchImagesToolDef, SEARCH_IMAGES_TOOL};
 use crate::tools::search_papers::{SearchPapersArgs, SearchPapersToolDef, SEARCH_PAPERS_TOOL};
-use crate::tools::task::{TaskArgs, TaskToolDef, TASK_TOOL};
-use crate::tools::task_group::{TaskGroupArgs, TaskGroupToolDef, TASK_GROUP_TOOL};
 use crate::tools::taste_context::{TasteContextArgs, TasteContextToolDef, TASTE_CONTEXT_TOOL};
 use crate::tools::taste_profile::{TasteProfileArgs, TasteProfileToolDef, TASTE_PROFILE_TOOL};
 use crate::tools::web_fetch::{WebFetchArgs, WebFetchToolDef, WEB_FETCH_TOOL};
 use crate::tools::web_search::{WebSearchArgs, WebSearchTool, WebSearchToolDef, WEB_SEARCH_TOOL};
 use crate::tools::{
     AskProjectTool, BatchLearnTool, EnhancePromptTool, GoalPhaseTool, GoalTool, MemoryEventTool,
-    MemoryForgetTool, MemoryListTool, MemoryProfileTool, MemoryTool, PlanTool, RecallTool,
-    SearchContextTool, SearchImagesTool, SearchPapersTool, TaskGroupTool, TaskTool,
-    TasteContextTool, TasteProfileTool, WebFetchTool,
+    MemoryForgetTool, MemoryListTool, MemoryProfileTool, MemoryTool, RecallTool, SearchContextTool,
+    SearchImagesTool, SearchPapersTool, TasteContextTool, TasteProfileTool, WebFetchTool,
 };
 
 /// Map tool name aliases to canonical names
@@ -494,31 +490,6 @@ impl McpServer {
             ]);
         }
 
-        if self.config.enable_task_tools {
-            tools.extend([
-                Tool {
-                    name: TASK_GROUP_TOOL.name.to_string(),
-                    description: TASK_GROUP_TOOL.description.to_string(),
-                    input_schema: TaskGroupToolDef::get_input_schema(),
-                },
-                Tool {
-                    name: TASK_TOOL.name.to_string(),
-                    description: TASK_TOOL.description.to_string(),
-                    input_schema: TaskToolDef::get_input_schema(),
-                },
-                Tool {
-                    name: PLAN_TOOL.name.to_string(),
-                    description: PLAN_TOOL.description.to_string(),
-                    input_schema: PlanToolDef::get_input_schema(),
-                },
-                Tool {
-                    name: ASK_PROJECT_TOOL.name.to_string(),
-                    description: ASK_PROJECT_TOOL.description.to_string(),
-                    input_schema: AskProjectToolDef::get_input_schema(),
-                },
-            ]);
-        }
-
         if self.config.enable_goal_tools {
             tools.extend([
                 Tool {
@@ -530,6 +501,11 @@ impl McpServer {
                     name: GOAL_PHASE_TOOL.name.to_string(),
                     description: GOAL_PHASE_TOOL.description.to_string(),
                     input_schema: GoalPhaseToolDef::get_input_schema(),
+                },
+                Tool {
+                    name: ASK_PROJECT_TOOL.name.to_string(),
+                    description: ASK_PROJECT_TOOL.description.to_string(),
+                    input_schema: AskProjectToolDef::get_input_schema(),
                 },
             ]);
         }
@@ -774,59 +750,8 @@ impl McpServer {
                 let result = tool.execute(args).await;
                 Self::text_tool_response(id, result.text)
             }
-            "task_group" => {
-                if !self.config.enable_task_tools {
-                    return JsonRpcResponse::error(
-                        id,
-                        -32602,
-                        "Tool 'task_group' is disabled".to_string(),
-                    );
-                }
-
-                let args: TaskGroupArgs = match Self::parse_tool_args(&id, call_params.arguments) {
-                    Ok(args) => args,
-                    Err(response) => return *response,
-                };
-                let tool = TaskGroupTool::new(self.config.clone());
-                let result = tool.execute(args).await;
-                Self::text_tool_response(id, result.text)
-            }
-            "task" => {
-                if !self.config.enable_task_tools {
-                    return JsonRpcResponse::error(
-                        id,
-                        -32602,
-                        "Tool 'task' is disabled".to_string(),
-                    );
-                }
-
-                let args: TaskArgs = match Self::parse_tool_args(&id, call_params.arguments) {
-                    Ok(args) => args,
-                    Err(response) => return *response,
-                };
-                let tool = TaskTool::new(self.config.clone());
-                let result = tool.execute(args).await;
-                Self::text_tool_response(id, result.text)
-            }
-            "plan" => {
-                if !self.config.enable_task_tools {
-                    return JsonRpcResponse::error(
-                        id,
-                        -32602,
-                        "Tool 'plan' is disabled".to_string(),
-                    );
-                }
-
-                let args: PlanArgs = match Self::parse_tool_args(&id, call_params.arguments) {
-                    Ok(args) => args,
-                    Err(response) => return *response,
-                };
-                let tool = PlanTool::new(self.config.clone());
-                let result = tool.execute(args).await;
-                Self::text_tool_response(id, result.text)
-            }
             "ask_project" => {
-                if !self.config.enable_task_tools {
+                if !self.config.enable_goal_tools {
                     return JsonRpcResponse::error(
                         id,
                         -32602,
@@ -972,13 +897,13 @@ mod tests {
     }
 
     fn test_config(enable_memory_tools: bool, enable_taste_tools: bool) -> Arc<Config> {
-        test_config_with_task_tools(enable_memory_tools, enable_taste_tools, true)
+        test_config_with_goal_tools(enable_memory_tools, enable_taste_tools, true)
     }
 
-    fn test_config_with_task_tools(
+    fn test_config_with_goal_tools(
         enable_memory_tools: bool,
         enable_taste_tools: bool,
-        enable_task_tools: bool,
+        enable_goal_tools: bool,
     ) -> Arc<Config> {
         Arc::new(Config {
             base_url: "https://example.com".to_string(),
@@ -986,8 +911,7 @@ mod tests {
             container_tag: "test-container".to_string(),
             enable_memory_tools,
             enable_taste_tools,
-            enable_task_tools,
-            enable_goal_tools: true,
+            enable_goal_tools,
             max_lines_per_blob: 800,
             retrieval_timeout_secs: 60,
             no_adaptive: false,
@@ -1023,9 +947,6 @@ mod tests {
         assert!(names.contains(&"batch_learn".to_string()));
         assert!(names.contains(&"taste_context".to_string()));
         assert!(names.contains(&"taste_profile".to_string()));
-        assert!(names.contains(&"task_group".to_string()));
-        assert!(names.contains(&"task".to_string()));
-        assert!(names.contains(&"plan".to_string()));
         assert!(names.contains(&"ask_project".to_string()));
         assert!(names.contains(&"goal".to_string()));
         assert!(names.contains(&"goal_phase".to_string()));
@@ -1036,18 +957,17 @@ mod tests {
     }
 
     #[test]
-    fn list_tools_counts_task_tools_when_enabled_and_disabled() {
+    fn list_tools_counts_goal_tools_when_enabled_and_disabled() {
         let _prompt_enhancer = EnvVarGuard::set("PROMPT_ENHANCER", "enabled");
         let server = McpServer::new(test_config(true, true), None);
         let names = listed_tool_names(&server);
-        assert_eq!(names.len(), 21);
+        assert_eq!(names.len(), 18);
 
-        let server = McpServer::new(test_config_with_task_tools(true, true, false), None);
+        let server = McpServer::new(test_config_with_goal_tools(true, true, false), None);
         let names = listed_tool_names(&server);
-        assert_eq!(names.len(), 17);
-        assert!(!names.contains(&"task_group".to_string()));
-        assert!(!names.contains(&"task".to_string()));
-        assert!(!names.contains(&"plan".to_string()));
+        assert_eq!(names.len(), 15);
+        assert!(!names.contains(&"goal".to_string()));
+        assert!(!names.contains(&"goal_phase".to_string()));
         assert!(!names.contains(&"ask_project".to_string()));
     }
 
@@ -1064,7 +984,8 @@ mod tests {
         assert!(names.contains(&"memory_forget".to_string()));
         assert!(names.contains(&"memory_list".to_string()));
         assert!(names.contains(&"memory_profile".to_string()));
-        assert!(names.contains(&"task_group".to_string()));
+        assert!(names.contains(&"goal".to_string()));
+        assert!(names.contains(&"ask_project".to_string()));
     }
 
     #[test]
@@ -1081,7 +1002,8 @@ mod tests {
         assert!(!names.contains(&"batch_learn".to_string()));
         assert!(names.contains(&"taste_context".to_string()));
         assert!(names.contains(&"taste_profile".to_string()));
-        assert!(names.contains(&"task_group".to_string()));
+        assert!(names.contains(&"goal".to_string()));
+        assert!(names.contains(&"ask_project".to_string()));
     }
 
     #[tokio::test]
@@ -1093,24 +1015,6 @@ mod tests {
                 Some(json!({
                     "name": "memory",
                     "arguments": {"content": "remember this"}
-                })),
-            )
-            .await;
-
-        let error = response.error.expect("disabled tool should return error");
-        assert_eq!(error.code, -32602);
-        assert!(error.message.contains("disabled"));
-    }
-
-    #[tokio::test]
-    async fn rejects_disabled_task_tool_call() {
-        let server = McpServer::new(test_config_with_task_tools(true, true, false), None);
-        let response = server
-            .handle_call_tool(
-                Some(json!(1)),
-                Some(json!({
-                    "name": "task_group",
-                    "arguments": {"action": "list"}
                 })),
             )
             .await;

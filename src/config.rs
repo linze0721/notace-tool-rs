@@ -21,7 +21,6 @@ pub struct ConfigOptions {
     pub container_tag: Option<String>,
     pub enable_memory_tools: Option<bool>,
     pub enable_taste_tools: Option<bool>,
-    pub enable_task_tools: Option<bool>,
     pub enable_goal_tools: Option<bool>,
     pub no_adaptive: bool,
     pub no_webbrowser_enhance_prompt: bool,
@@ -37,7 +36,6 @@ pub struct Config {
     pub container_tag: String,
     pub enable_memory_tools: bool,
     pub enable_taste_tools: bool,
-    pub enable_task_tools: bool,
     pub enable_goal_tools: bool,
     pub max_lines_per_blob: usize,
     pub retrieval_timeout_secs: u64,
@@ -101,9 +99,6 @@ impl Config {
             enable_taste_tools: options
                 .enable_taste_tools
                 .unwrap_or_else(|| env_flag_enabled("ACE_ENABLE_TASTE_TOOLS", true)),
-            enable_task_tools: options
-                .enable_task_tools
-                .unwrap_or_else(|| env_flag_enabled("ACE_ENABLE_TASK_TOOLS", true)),
             enable_goal_tools: options
                 .enable_goal_tools
                 .unwrap_or_else(|| env_flag_enabled("ACE_ENABLE_GOAL_TOOLS", true)),
@@ -132,7 +127,6 @@ impl Config {
                 .unwrap_or_else(|_| "default".to_string()),
             enable_memory_tools: env_flag_enabled("ACE_ENABLE_MEMORY_TOOLS", true),
             enable_taste_tools: env_flag_enabled("ACE_ENABLE_TASTE_TOOLS", true),
-            enable_task_tools: env_flag_enabled("ACE_ENABLE_TASK_TOOLS", true),
             enable_goal_tools: env_flag_enabled("ACE_ENABLE_GOAL_TOOLS", true),
             max_lines_per_blob: 800,
             retrieval_timeout_secs: 60,

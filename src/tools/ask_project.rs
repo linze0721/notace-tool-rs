@@ -9,7 +9,7 @@ use tracing::{error, info, warn};
 
 use crate::config::Config;
 use crate::index::IndexManager;
-use crate::service::tasks::{AgentBlobsPayload, AskProjectRequest, TasksClient};
+use crate::service::goals::{AgentBlobsPayload, AskProjectRequest, GoalsClient};
 
 /// Tool definition for MCP
 pub struct AskProjectToolDef {
@@ -84,7 +84,7 @@ impl AskProjectTool {
             }
         };
 
-        let client = match TasksClient::new(self.config.clone()) {
+        let client = match GoalsClient::new(self.config.clone()) {
             Ok(client) => client,
             Err(e) => {
                 return ToolResult {

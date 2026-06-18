@@ -7,7 +7,6 @@ pub(crate) mod gemini;
 pub mod goals;
 pub(crate) mod openai;
 pub mod supermemory;
-pub mod tasks;
 
 // Re-export commonly used items
 pub use augment::{
