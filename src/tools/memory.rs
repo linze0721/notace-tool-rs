@@ -28,10 +28,8 @@ impl MemoryToolDef {
             "properties": {
                 "content": { "type": "string", "description": "Memory content to save" },
                 "container_tag": { "type": "string", "description": "Optional memory container tag" },
-                "containerTag": { "type": "string", "description": "Optional memory container tag" },
                 "metadata": { "type": "object", "description": "Optional JSON metadata" },
-                "task_type": { "type": "string", "description": "Optional task type" },
-                "taskType": { "type": "string", "description": "Optional task type" }
+                "task_type": { "type": "string", "description": "Optional task type" }
             },
             "required": ["content"]
         })
@@ -118,15 +116,16 @@ mod tests {
     fn schema_requires_content() {
         let schema = MemoryToolDef::get_input_schema();
         assert_eq!(schema["required"][0], "content");
-        assert!(schema["properties"].get("containerTag").is_some());
+        assert!(schema["properties"].get("container_tag").is_some());
+        assert!(schema["properties"].get("task_type").is_some());
     }
 
     #[test]
-    fn parses_camel_case_aliases() {
+    fn parses_snake_case_fields() {
         let args: MemoryArgs = serde_json::from_value(json!({
             "content": "remember this",
-            "containerTag": "ace",
-            "taskType": "implementation"
+            "container_tag": "ace",
+            "task_type": "implementation"
         }))
         .unwrap();
         assert_eq!(args.container_tag.as_deref(), Some("ace"));

@@ -28,8 +28,7 @@ impl MemoryForgetToolDef {
             "properties": {
                 "id": { "type": "string", "description": "Memory fact id to forget (from recall search results)" },
                 "content": { "type": "string", "description": "Exact memory fact content to match and forget" },
-                "container_tag": { "type": "string", "description": "Optional memory container tag" },
-                "containerTag": { "type": "string", "description": "Optional memory container tag" }
+                "container_tag": { "type": "string", "description": "Optional memory container tag" }
             },
             "required": []
         })
@@ -109,20 +108,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn schema_accepts_id_content_and_container_alias() {
+    fn schema_accepts_id_content_and_container_tag() {
         let schema = MemoryForgetToolDef::get_input_schema();
         assert_eq!(schema["required"], json!([]));
         assert!(schema["properties"].get("id").is_some());
         assert!(schema["properties"].get("content").is_some());
-        assert!(schema["properties"].get("containerTag").is_some());
+        assert!(schema["properties"].get("container_tag").is_some());
     }
 
     #[test]
-    fn parses_container_alias() {
+    fn parses_container_tag() {
         let args: MemoryForgetArgs = serde_json::from_value(json!({
             "id": "mem_1",
             "content": "remember this",
-            "containerTag": "ace"
+            "container_tag": "ace"
         }))
         .unwrap();
         assert_eq!(args.id.as_deref(), Some("mem_1"));

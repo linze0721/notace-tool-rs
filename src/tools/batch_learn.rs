@@ -28,7 +28,6 @@ impl BatchLearnToolDef {
             "properties": {
                 "source": { "type": "string", "description": "Source label for imported prompts" },
                 "container_tag": { "type": "string", "description": "Optional memory container tag" },
-                "containerTag": { "type": "string", "description": "Optional memory container tag" },
                 "prompts": { "type": "array", "items": { "type": "string" }, "description": "Prompts or snippets to import" }
             },
             "required": ["source", "prompts"]
@@ -124,13 +123,14 @@ mod tests {
     fn schema_requires_source_and_prompts() {
         let schema = BatchLearnToolDef::get_input_schema();
         assert_eq!(schema["required"], json!(["source", "prompts"]));
+        assert!(schema["properties"].get("container_tag").is_some());
     }
 
     #[test]
-    fn parses_container_alias() {
+    fn parses_container_tag() {
         let args: BatchLearnArgs = serde_json::from_value(json!({
             "source": "history",
-            "containerTag": "ace",
+            "container_tag": "ace",
             "prompts": ["one", "two"]
         }))
         .unwrap();

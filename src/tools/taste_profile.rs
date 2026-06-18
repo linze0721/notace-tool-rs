@@ -27,7 +27,6 @@ impl TasteProfileToolDef {
             "type": "object",
             "properties": {
                 "container_tag": { "type": "string", "description": "Optional memory container tag" },
-                "containerTag": { "type": "string", "description": "Optional memory container tag" },
                 "format": { "type": "string", "enum": ["markdown", "json"], "description": "Profile format" }
             },
             "required": []
@@ -95,13 +94,14 @@ mod tests {
     #[test]
     fn schema_exposes_format() {
         let schema = TasteProfileToolDef::get_input_schema();
+        assert!(schema["properties"].get("container_tag").is_some());
         assert!(schema["properties"].get("format").is_some());
     }
 
     #[test]
-    fn parses_container_alias() {
+    fn parses_container_tag() {
         let args: TasteProfileArgs = serde_json::from_value(json!({
-            "containerTag": "ace",
+            "container_tag": "ace",
             "format": "json"
         }))
         .unwrap();

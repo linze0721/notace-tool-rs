@@ -27,13 +27,10 @@ impl RecallToolDef {
             "type": "object",
             "properties": {
                 "query": { "type": "string", "description": "Search query" },
-                "q": { "type": "string", "description": "Search query" },
                 "container_tag": { "type": "string", "description": "Optional memory container tag" },
-                "containerTag": { "type": "string", "description": "Optional memory container tag" },
                 "limit": { "type": "integer", "description": "Maximum result count" },
                 "threshold": { "type": "number", "description": "Optional relevance threshold; server default is 0.5, use 0.2-0.4 to broaden recall" },
                 "search_mode": { "type": "string", "description": "Optional search mode" },
-                "searchMode": { "type": "string", "description": "Optional search mode" },
                 "include_profile": { "type": "boolean", "description": "Append Taste profile to results" }
             },
             "required": ["query"]
@@ -134,21 +131,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn schema_contains_query_aliases() {
+    fn schema_contains_snake_case_fields() {
         let schema = RecallToolDef::get_input_schema();
         assert_eq!(schema["required"], json!(["query"]));
-        assert!(schema["properties"].get("q").is_some());
+        assert!(schema["properties"].get("query").is_some());
         assert!(schema["properties"].get("threshold").is_some());
-        assert!(schema["properties"].get("searchMode").is_some());
+        assert!(schema["properties"].get("search_mode").is_some());
     }
 
     #[test]
-    fn parses_aliases() {
+    fn parses_snake_case_fields() {
         let args: RecallArgs = serde_json::from_value(json!({
-            "q": "rust preferences",
-            "containerTag": "ace",
+            "query": "rust preferences",
+            "container_tag": "ace",
             "threshold": 0.35,
-            "searchMode": "semantic",
+            "search_mode": "semantic",
             "include_profile": true
         }))
         .unwrap();

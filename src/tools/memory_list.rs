@@ -27,11 +27,9 @@ impl MemoryListToolDef {
             "type": "object",
             "properties": {
                 "container_tag": { "type": "string", "description": "Optional memory container tag" },
-                "containerTag": { "type": "string", "description": "Optional memory container tag" },
                 "limit": { "type": "integer", "description": "Maximum memories to list, defaults to 20", "default": 20 },
                 "page": { "type": "integer", "description": "Page number to list" },
-                "include_content": { "type": "boolean", "description": "Include memory content, defaults to true", "default": true },
-                "includeContent": { "type": "boolean", "description": "Include memory content, defaults to true", "default": true }
+                "include_content": { "type": "boolean", "description": "Include memory content, defaults to true", "default": true }
             },
             "required": []
         })
@@ -109,18 +107,18 @@ mod tests {
     fn schema_exposes_list_options() {
         let schema = MemoryListToolDef::get_input_schema();
         assert_eq!(schema["required"], json!([]));
-        assert!(schema["properties"].get("containerTag").is_some());
+        assert!(schema["properties"].get("container_tag").is_some());
         assert!(schema["properties"].get("limit").is_some());
-        assert!(schema["properties"].get("includeContent").is_some());
+        assert!(schema["properties"].get("include_content").is_some());
     }
 
     #[test]
-    fn parses_aliases() {
+    fn parses_snake_case_fields() {
         let args: MemoryListArgs = serde_json::from_value(json!({
-            "containerTag": "ace",
+            "container_tag": "ace",
             "limit": 10,
             "page": 2,
-            "includeContent": false
+            "include_content": false
         }))
         .unwrap();
         assert_eq!(args.container_tag.as_deref(), Some("ace"));

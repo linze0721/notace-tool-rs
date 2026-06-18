@@ -27,7 +27,6 @@ impl MemoryProfileToolDef {
             "type": "object",
             "properties": {
                 "container_tag": { "type": "string", "description": "Optional memory container tag" },
-                "containerTag": { "type": "string", "description": "Optional memory container tag" },
                 "q": { "type": "string", "description": "Optional search query to include search results" },
                 "threshold": { "type": "number", "description": "Optional search threshold" }
             },
@@ -104,15 +103,15 @@ mod tests {
     fn schema_exposes_profile_options() {
         let schema = MemoryProfileToolDef::get_input_schema();
         assert_eq!(schema["required"], json!([]));
-        assert!(schema["properties"].get("containerTag").is_some());
+        assert!(schema["properties"].get("container_tag").is_some());
         assert!(schema["properties"].get("q").is_some());
         assert!(schema["properties"].get("threshold").is_some());
     }
 
     #[test]
-    fn parses_container_alias_and_threshold() {
+    fn parses_container_tag_and_threshold() {
         let args: MemoryProfileArgs = serde_json::from_value(json!({
-            "containerTag": "ace",
+            "container_tag": "ace",
             "q": "rust testing",
             "threshold": 0.35
         }))

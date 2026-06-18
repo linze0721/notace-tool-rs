@@ -29,7 +29,6 @@ impl TasteContextToolDef {
                 "query": { "type": "string", "description": "Optional query for future contextual filtering" },
                 "category": { "type": "string", "description": "Optional Taste category for future filtering" },
                 "container_tag": { "type": "string", "description": "Optional memory container tag" },
-                "containerTag": { "type": "string", "description": "Optional memory container tag" },
                 "limit": { "type": "integer", "description": "Optional future context result limit" }
             },
             "required": []
@@ -106,14 +105,15 @@ mod tests {
         let schema = TasteContextToolDef::get_input_schema();
         assert!(schema["properties"].get("query").is_some());
         assert!(schema["properties"].get("category").is_some());
+        assert!(schema["properties"].get("container_tag").is_some());
     }
 
     #[test]
-    fn parses_container_alias() {
+    fn parses_container_tag() {
         let args: TasteContextArgs = serde_json::from_value(json!({
             "query": "testing",
             "category": "rust",
-            "containerTag": "ace",
+            "container_tag": "ace",
             "limit": 3
         }))
         .unwrap();

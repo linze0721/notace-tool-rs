@@ -42,7 +42,6 @@ impl MemoryEventToolDef {
                 },
                 "content": { "type": "string", "description": "Event content" },
                 "container_tag": { "type": "string", "description": "Optional memory container tag" },
-                "containerTag": { "type": "string", "description": "Optional memory container tag" },
                 "source": { "type": "string", "description": "Event source, defaults to mcp/client" },
                 "metadata": { "type": "object", "description": "Optional JSON metadata" }
             },
@@ -157,14 +156,15 @@ mod tests {
                 "session_imported"
             ])
         );
+        assert!(schema["properties"].get("container_tag").is_some());
     }
 
     #[test]
-    fn parses_type_and_container_alias() {
+    fn parses_type_and_container_tag() {
         let args: MemoryEventArgs = serde_json::from_value(json!({
             "type": "assistant_response_accepted",
             "content": "accepted",
-            "containerTag": "ace"
+            "container_tag": "ace"
         }))
         .unwrap();
         assert_eq!(
