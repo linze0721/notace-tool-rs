@@ -22,6 +22,7 @@ pub struct ConfigOptions {
     pub enable_memory_tools: Option<bool>,
     pub enable_taste_tools: Option<bool>,
     pub enable_task_tools: Option<bool>,
+    pub enable_goal_tools: Option<bool>,
     pub no_adaptive: bool,
     pub no_webbrowser_enhance_prompt: bool,
     /// Force using xdg-open instead of explorer.exe in WSL
@@ -37,6 +38,7 @@ pub struct Config {
     pub enable_memory_tools: bool,
     pub enable_taste_tools: bool,
     pub enable_task_tools: bool,
+    pub enable_goal_tools: bool,
     pub max_lines_per_blob: usize,
     pub retrieval_timeout_secs: u64,
     pub no_adaptive: bool,
@@ -102,6 +104,9 @@ impl Config {
             enable_task_tools: options
                 .enable_task_tools
                 .unwrap_or_else(|| env_flag_enabled("ACE_ENABLE_TASK_TOOLS", true)),
+            enable_goal_tools: options
+                .enable_goal_tools
+                .unwrap_or_else(|| env_flag_enabled("ACE_ENABLE_GOAL_TOOLS", true)),
             max_lines_per_blob: options.max_lines_per_blob.unwrap_or(800),
             retrieval_timeout_secs: options.retrieval_timeout.unwrap_or(60),
             no_adaptive: options.no_adaptive,
@@ -128,6 +133,7 @@ impl Config {
             enable_memory_tools: env_flag_enabled("ACE_ENABLE_MEMORY_TOOLS", true),
             enable_taste_tools: env_flag_enabled("ACE_ENABLE_TASTE_TOOLS", true),
             enable_task_tools: env_flag_enabled("ACE_ENABLE_TASK_TOOLS", true),
+            enable_goal_tools: env_flag_enabled("ACE_ENABLE_GOAL_TOOLS", true),
             max_lines_per_blob: 800,
             retrieval_timeout_secs: 60,
             no_adaptive: false,

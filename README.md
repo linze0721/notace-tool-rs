@@ -1,227 +1,132 @@
 # not-ace-tool-rs
 
-MCP server that gives AI coding agents codebase search, web research, persistent memory, learned preferences, and task planning.
+> **Vendored Not ACE client:** This directory contains the Not ACE fork of the upstream `ace-tool-rs` client, vendored into the ACE workspace with local modifications for Not ACE integration. Some internal paths and cache directories may still use the upstream `.ace-tool` name for compatibility.
 
 English | [简体中文](README-zh-CN.md)
 
-## Quick Start
+A high-performance MCP (Model Context Protocol) server for codebase indexing, semantic search, and prompt enhancement, written in Rust.
 
-1. Install: `npx -y not-ace-tool-rs --help`
-2. Configure: paste one MCP JSON snippet below and replace `https://api.example.com` / `your-token-here`.
-3. Done: restart your agent and use `search_context`, `recall`, `plan`, `web_search`, `search_papers`, `search_images`, and `web_fetch`.
+## Overview
 
-### Claude Code
+not-ace-tool-rs is a Rust implementation of a codebase context engine that enables AI assistants to search and understand codebases using natural language queries. It provides:
 
-```json
-{
-  "type": "stdio",
-  "command": "npx",
-  "args": ["-y", "not-ace-tool-rs", "--base-url", "https://api.example.com", "--token", "your-token-here"],
-  "env": { "RUST_LOG": "info" }
-}
+- **Real-time codebase indexing** - Automatically indexes your project files and keeps the index up-to-date
+- **Semantic search** - Find relevant code using natural language descriptions
+- **Prompt enhancement** - Enhance user prompts with codebase context for clearer, more actionable requests
+- **Multi-language support** - Works with 50+ programming languages and file types
+- **Incremental updates** - Uses mtime caching to skip unchanged files and only uploads new/modified content
+- **Parallel processing** - Multi-threaded file scanning and processing for faster indexing
+- **Smart exclusions** - Respects `.gitignore` and common ignore patterns
+
+## Features
+
+- **MCP Protocol Support** - Full JSON-RPC 2.0 implementation over stdio transport
+- **Adaptive Upload Strategy** - AIMD (Additive Increase, Multiplicative Decrease) algorithm dynamically adjusts concurrency and timeout based on runtime metrics
+- **Multi-encoding Support** - Handles UTF-8, GBK, GB18030, and Windows-1252 encoded files
+- **Concurrent Uploads** - Parallel batch uploads with sliding window for faster indexing of large projects
+- **Mtime Caching** - Tracks file modification times to avoid re-processing unchanged files
+- **Robust Error Handling** - Retry logic with exponential backoff and rate limiting support
+
+## Installation
+
+### Quick Start (Recommended)
+
+The easiest way to install and run not-ace-tool-rs is via npx:
+
+```bash
+npx not-ace-tool-rs --base-url <API_URL> --token <AUTH_TOKEN>
 ```
 
-### Cursor
+This will automatically download the appropriate binary for your platform and run it.
 
-```json
-{
-  "mcpServers": {
-    "not-ace-tool": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "not-ace-tool-rs", "--base-url", "https://api.example.com", "--token", "your-token-here"],
-      "env": { "RUST_LOG": "info" }
-    }
-  }
-}
+**Supported platforms:**
+- Windows (x64)
+- macOS (x64, ARM64)
+- Linux (x64, ARM64)
+
+### From Source
+
+```bash
+# Clone the repository
+git clone <not-ace-tool-rs repository URL>
+cd not-ace-tool-rs
+
+# Build release binary
+cargo build --release
+
+# The binary will be at target/release/not-ace-tool-rs
 ```
 
-### OpenCode
+### Requirements
 
-```json
-{
-  "mcp": {
-    "not-ace-tool": {
-      "type": "local",
-      "command": ["npx", "-y", "not-ace-tool-rs", "--base-url", "https://api.example.com", "--token", "your-token-here"],
-      "environment": { "RUST_LOG": "info" },
-      "enabled": true
-    }
-  }
-}
+- Rust 1.70 or later
+- An API endpoint for the indexing service
+- Authentication token
+
+## Usage
+
+### Command Line
+
+```bash
+not-ace-tool-rs --base-url <API_URL> --token <AUTH_TOKEN>
 ```
 
-## What It Does
+### Arguments
 
-not-ace-tool-rs connects AI coding agents to your codebase through MCP. It indexes text files, retrieves relevant code with natural-language queries, and can enhance prompts with project context. It also searches the web, academic papers, and images, fetches clean page content, stores durable memories, recalls past decisions, learns user preferences, and manages task plans across sessions.
+| Argument | Description |
+|----------|-------------|
+| `--base-url` | API base URL for the indexing service (optional for `--enhance-prompt` with third-party endpoints) |
+| `--token` | Authentication token for API access (optional for `--enhance-prompt` with third-party endpoints) |
+| `--transport` | Transport framing: `auto` (default), `lsp`, `line` |
+| `--upload-timeout` | Override upload timeout in seconds (disables adaptive timeout) |
+| `--upload-concurrency` | Override upload concurrency (disables adaptive concurrency) |
+| `--no-adaptive` | Disable adaptive strategy, use static heuristic values |
+| `--webbrowser-enhance-prompt` | Enable web browser interaction for enhance_prompt (opens a local web UI for editing). By default the API result is returned directly. `--no-webbrowser-enhance-prompt` is deprecated and now a no-op |
+| `--index-only` | Index current directory and exit (no MCP server) |
+| `--enhance-prompt` | Enhance a prompt and output the result to stdout, then exit |
+| `--max-lines-per-blob` | Maximum lines per blob chunk (default: 800) |
+| `--retrieval-timeout` | Search retrieval timeout in seconds (default: 180) |
+| `--container-tag` | Container tag for memory, recall, memory management, batch learning, and Taste operations (default: `default`, or `ACE_CONTAINER_TAG`) |
+| `--taste-profile` | Export the Taste profile for the selected container and exit |
+| `--memory-profile-format` | Taste profile output format for `--taste-profile`: `markdown` (default) or `json` |
+| `--memory-event` | Submit a memory event JSON object and exit |
+| `--batch-learn` | Import prompts from a JSON or JSONL file and exit |
 
-- 🔎 **Codebase search** — ask for behavior, architecture, tests, or flows without knowing file names.
-- 🌐 **Web & research** — search the web, papers, and images, then fetch clean page content.
-- 🧠 **Persistent memory** — save and recall project facts, decisions, and workflow context.
-- ✨ **Learned preferences** — expose Taste context so agents can follow your style and habits.
-- ✅ **Task planning** — create draft plans, persistent task groups, and project-aware Q&A.
-- ⚡ **Fast indexing** — incremental mtime caching, parallel scanning, and adaptive uploads.
+### Environment Variables
 
-## Tools (19 tools)
+| Variable | Description |
+|----------|-------------|
+| `RUST_LOG` | Set log level (e.g., `info`, `debug`, `warn`) |
+| `PROMPT_ENHANCER` | Control `enhance_prompt` tool exposure: set to `disabled`, `false`, `0`, or `off` to hide and disable the tool |
+| `ACE_ENHANCER_ENDPOINT` | Endpoint selection: `new` (default), `old`, `claude`, `openai`, or `gemini` |
+| `PROMPT_ENHANCER_BASE_URL` | Base URL for third-party API (required for `claude`/`openai`/`gemini`) |
+| `PROMPT_ENHANCER_TOKEN` | API key for third-party API (required for `claude`/`openai`/`gemini`) |
+| `PROMPT_ENHANCER_MODEL` | Model name override for third-party API (optional) |
+| `ACE_CONTAINER_TAG` | Default container tag used by memory, recall, memory management, batch learning, and Taste tools when `--container-tag` is not supplied |
+| `ACE_ENABLE_MEMORY_TOOLS` | Control `memory`, `recall`, `memory_forget`, `memory_list`, `memory_profile`, `memory_event`, and `batch_learn` exposure. Set to `disabled`, `false`, `0`, or `off` to hide and reject these tools |
+| `ACE_ENABLE_TASTE_TOOLS` | Control `taste_context` and `taste_profile` exposure. Set to `disabled`, `false`, `0`, or `off` to hide and reject these tools |
+| `ACE_ENABLE_TASK_TOOLS` | Control `task_group`, `task`, `plan`, and `ask_project` exposure. Set to `disabled`, `false`, `0`, or `off` to hide and reject these tools. Default enabled. |
 
-| Group | Tool | Description | Key params |
-|-------|------|-------------|------------|
-| Code Search | `search_context` | Find relevant code by natural-language query. | `project_root_path`, `query` |
-| Code Search | `enhance_prompt` | Rewrite a request with codebase and conversation context. | `prompt`, `conversation_history`, `project_root_path?` |
-| Web & Research | `web_search` | Search the web with quick, broad, or deep research modes. | `query`, `mode?`, `count?`, `max_rounds?` |
-| Web & Research | `search_papers` | Search academic papers on arXiv and SSRN. | `query`, `source?`, `count?`, `extract_content?` |
-| Web & Research | `search_images` | Search images across the web. | `query`, `count?` |
-| Web & Research | `web_fetch` | Fetch a page and extract clean markdown or text. | `url`, `format?` |
-| Memory | `memory` | Save durable knowledge to the configured container. | `content`, `container_tag?`, `metadata?` |
-| Memory | `recall` | Search saved memories with semantic recall. | `query`, `limit?`, `threshold?` |
-| Memory | `memory_forget` | Delete a saved memory by fact id or exact content. | `id?`, `content?` |
-| Memory | `memory_list` | List memory documents with pagination. | `limit?`, `page?`, `include_content?` |
-| Memory | `memory_profile` | Export a profile of saved observations and facts. | `q?`, `threshold?` |
-| Memory | `memory_event` | Record learning events from agent or user feedback. | `type`, `content`, `metadata?` |
-| Memory | `batch_learn` | Import prompts or sessions for batch learning. | `prompts`, `source?` |
-| Taste | `taste_context` | Load preference context relevant to the current task. | `query`, `limit?` |
-| Taste | `taste_profile` | Export the full learned preference profile. | `format?` |
-| Tasks | `task_group` | Create, list, or delete persistent task groups. | `action`, `name?`, `group_id?` |
-| Tasks | `task` | Add, update, list, or delete tasks in a group. | `action`, `group_id?`, `tasks?`, `task_id?` |
-| Tasks | `plan` | Generate a grounded draft todo list from a requirement. | `project_root_path`, `requirement` |
-| Tasks | `ask_project` | Answer project questions using codebase retrieval and memory. | `project_root_path`, `question` |
+### Example
 
-<details>
-<summary>Detailed tool parameters</summary>
-
-| Tool | Required | Optional / notes |
-|------|----------|------------------|
-| `search_context` | `project_root_path`, `query` | `project_root_path` must be absolute. |
-| `enhance_prompt` | `prompt`, `conversation_history` | `project_root_path`; `conversation_history` is usually 5-10 recent rounds. |
-| `web_search` | `query` | `mode` (`search`, `broad`, `deep`; default `search`), `count` (default `5`), `max_rounds` (default `3`, deep mode only). `search` returns quick results; `broad` decomposes the query into sub-queries, searches each, and synthesizes an answer; `deep` runs plan → search → analyze → report. |
-| `search_papers` | `query` | `source` (`arxiv`, `ssrn`, `all`; default `all`), `count` (default `5`), `extract_content` (default `true`; extracts full paper content). Returns titles, abstracts, and optionally extracted PDF content. |
-| `search_images` | `query` | `count` (default `5`); returns image URLs and descriptions. |
-| `web_fetch` | `url` | `format` (`markdown` or `text`; default `markdown`); returns title, content, and `published_time`. |
-| `memory` | `content` | `container_tag`, `metadata`, `task_type`. |
-| `recall` | `query` | `container_tag`, `limit`, `search_mode`, `threshold` (`0.2`-`0.4` broadens recall). |
-| `memory_forget` | `id` or `content` | `container_tag`; `id` is the fact id returned by `recall`. |
-| `memory_list` | — | `container_tag`, `limit` (default `20`), `page`, `include_content`. |
-| `memory_profile` | — | `container_tag`, `q`, `threshold`. |
-| `memory_event` | `type`, `content` | `container_tag`, `source`, `metadata`; accepted types include `user_edited_code`, `assistant_response_accepted`, `assistant_response_rejected`, and `preference_corrected`. |
-| `batch_learn` | `prompts` | `container_tag`, `source`; CLI import also accepts JSON and JSONL files. |
-| `taste_context` | `query` | `container_tag`, `limit`. |
-| `taste_profile` | — | `container_tag`, `format` (`markdown` or `json`). |
-| `task_group` | `action` | `create` uses `name` and optional `blob_names`; `delete` uses `group_id`; `list` needs no extra params. |
-| `task` | `action` | `add` uses `group_id` + `tasks`; `update/delete` use `task_id`; statuses: `pending`, `in_progress`, `done`, `cancelled`. |
-| `plan` | `project_root_path`, `requirement` | `container_tag`; returns a draft plan to confirm before saving as tasks. |
-| `ask_project` | `project_root_path`, `question` | `container_tag`; use `search_context` when you need raw snippets. |
-
-Memory tools are controlled by `ACE_ENABLE_MEMORY_TOOLS`, Taste tools by `ACE_ENABLE_TASTE_TOOLS`, and task tools by `ACE_ENABLE_TASK_TOOLS`.
-
-</details>
-
-## AI Agent Prompt Guide
-
-If you are building an AI coding agent (Claude Code, Cursor, Copilot, OpenCode, etc.) and want it to **proactively** use these tools, add the following to your agent's system prompt or `AGENTS.md`:
-
-```markdown
-## Available MCP Tools (Not ACE)
-
-You have access to the following tools through the Not ACE MCP server. Use them proactively — don't wait to be asked.
-
-### Workflow
-
-1. **Starting a task** → Call `recall(query)` to check for relevant past context, then `taste_context()` to load user preferences.
-2. **Exploring code** → Call `search_context(project_root_path, query)` instead of guessing file locations. This is your primary codebase search tool.
-3. **Understanding architecture** → Call `ask_project(project_root_path, question)` for questions that need codebase + memory context synthesized by LLM.
-4. **Researching outside the repo** → Call `web_search(query, mode)` for current web context; use `search_papers(query)` for academic sources, `search_images(query)` for visual references, and `web_fetch(url)` to read a known URL.
-5. **Planning work** → Call `plan(project_root_path, requirement)` to generate a grounded todo list before writing code.
-6. **During work** → Call `memory_event(type, content)` to record significant decisions, e.g. `type="user_edited_code"` when the user changes your output.
-7. **Finishing work** → Call `memory(content)` to save important discoveries, patterns, or decisions for future sessions.
-
-### Tool Reference
-
-| Tool | When to Use |
-|------|-------------|
-| `search_context` | Find code by natural language description. **Use this FIRST** before reading files or grepping. |
-| `ask_project` | Ask a question that needs synthesized answer from code + memory. |
-| `web_search` | Search the web. Use `search` for quick results, `broad` for synthesized multi-query coverage, and `deep` for multi-round research. |
-| `search_papers` | Find academic papers on arXiv/SSRN, with abstracts and optional full content extraction. |
-| `search_images` | Find image URLs and descriptions for visual references or examples. |
-| `web_fetch` | Fetch a URL and extract clean markdown/text with title and published time. |
-| `plan` | Turn a requirement into an actionable todo list grounded in the actual codebase. |
-| `recall` | Search past memories. **Use at session start** to load relevant context. |
-| `taste_context` | Get user's coding preferences. **Check before making style/architecture decisions.** |
-| `taste_profile` | Export full preference profile (markdown or JSON). |
-| `memory` | Save durable knowledge: project facts, decisions, patterns. |
-| `memory_event` | Record events: `user_edited_code`, `assistant_response_accepted/rejected`, `preference_corrected`. |
-| `batch_learn` | Import multiple prompts/sessions for learning. |
-| `memory_list` | List saved memories in a container. |
-| `memory_forget` | Delete a memory by id or exact content. |
-| `memory_profile` | Export memory profile with observations and facts. |
-| `task_group` | Create/list/delete persistent task groups (projects). |
-| `task` | Add/update/list/delete tasks within a group. |
-
-### Key Principles
-
-- **search_context over grep**: Semantic search finds relevant code even when you don't know exact names.
-- **web_search for current context**: Use web research when the answer depends on recent or external information.
-- **recall before work**: Previous sessions may have saved critical context about the codebase.
-- **taste before style decisions**: The user's preferences are learned and stored — respect them.
-- **memory after discoveries**: If you learned something important about the codebase, save it for next time.
-- **plan before implementation**: A grounded plan prevents wasted work on wrong assumptions.
+```bash
+# Run with debug logging
+RUST_LOG=debug not-ace-tool-rs --base-url https://api.example.com --token your-token-here
 ```
 
-## Configuration
+## Not ACE Memory and Taste Tools
 
-### CLI arguments
+This modified client exposes code search, prompt enhancement, Supermemory memory/recall/forget/list/profile tools, event learning, batch learning, and Taste profile export.
 
-| Argument | Default | Use |
-|----------|---------|-----|
-| `--base-url` | required | Indexing API base URL. Optional only for one-shot `--enhance-prompt` with third-party endpoints. |
-| `--token` | required | API token. Optional only for one-shot `--enhance-prompt` with third-party endpoints. |
-| `--transport` | `auto` | Framing mode: `auto`, `lsp`, or `line`. |
-| `--max-lines-per-blob` | `800` | Maximum lines per indexed blob. |
-| `--retrieval-timeout` | `60` | Search retrieval timeout in seconds. |
-| `--upload-timeout` | adaptive | Pin upload timeout in seconds. |
-| `--upload-concurrency` | adaptive | Pin upload concurrency. |
-| `--no-adaptive` | `false` | Disable adaptive upload tuning. |
-| `--webbrowser-enhance-prompt` | `false` | Open a local browser editor for `enhance_prompt`. |
-| `--force-xdg-open` | `false` | In WSL, force `xdg-open` instead of `explorer.exe`. |
-| `--index-only` | `false` | Index the current directory and exit. |
-| `--enhance-prompt <text>` | — | Enhance one prompt and print the result. |
-| `--container-tag` | `default` | Container for memory, Taste, and task context. |
-| `--taste-profile` | `false` | Export Taste profile and exit. |
-| `--memory-profile-format` | `markdown` | Profile format: `markdown` or `json`. |
-| `--memory-event <json>` | — | Submit one learning event and exit. |
-| `--batch-learn <file>` | — | Import prompts from a JSON or JSONL file and exit. |
+Examples:
 
-### Environment variables
+```bash
+not-ace-tool-rs --base-url https://not-ace.example --token ace_live_xxx --taste-profile --container-tag ace
+not-ace-tool-rs --base-url https://not-ace.example --token ace_live_xxx --memory-event '{"type":"user_edited_code","content":"AI used npm; user changed it to pnpm."}'
+not-ace-tool-rs --base-url https://not-ace.example --token ace_live_xxx --batch-learn sessions.jsonl --container-tag ace
+```
 
-| Variable | Default | Use |
-|----------|---------|-----|
-| `RUST_LOG` | — | Log level such as `info`, `debug`, or `warn`. |
-| `PROMPT_ENHANCER` | enabled | Set to `disabled`, `false`, `0`, or `off` to hide `enhance_prompt`. |
-| `ACE_ENHANCER_ENDPOINT` | `new` | Prompt enhancer backend: `new`, `old`, `claude`, `openai`, `gemini`. |
-| `PROMPT_ENHANCER_BASE_URL` | — | Third-party enhancer API base URL. |
-| `PROMPT_ENHANCER_TOKEN` | — | Third-party enhancer API token. |
-| `PROMPT_ENHANCER_MODEL` | provider default | Third-party enhancer model override. |
-| `ACE_CONTAINER_TAG` | `default` | Default container tag when `--container-tag` is not set. |
-| `ACE_ENABLE_MEMORY_TOOLS` | enabled | Hide/reject memory tools when disabled. |
-| `ACE_ENABLE_TASTE_TOOLS` | enabled | Hide/reject Taste tools when disabled. |
-| `ACE_ENABLE_TASK_TOOLS` | enabled | Hide/reject task tools when disabled. |
-
-<details>
-<summary>Advanced configuration</summary>
-
-### Prompt enhancer backends
-
-| Endpoint | Backend | Extra config |
-|----------|---------|--------------|
-| `new` | Default prompt enhancer endpoint | `--base-url`, `--token` |
-| `old` | Legacy streaming enhancer endpoint | `--base-url`, `--token` |
-| `claude` | Anthropic Claude API | `PROMPT_ENHANCER_BASE_URL`, `PROMPT_ENHANCER_TOKEN`, optional `PROMPT_ENHANCER_MODEL` |
-| `openai` | OpenAI API | `PROMPT_ENHANCER_BASE_URL`, `PROMPT_ENHANCER_TOKEN`, optional `PROMPT_ENHANCER_MODEL` |
-| `gemini` | Google Gemini API | `PROMPT_ENHANCER_BASE_URL`, `PROMPT_ENHANCER_TOKEN`, optional `PROMPT_ENHANCER_MODEL` |
-
-Default third-party models: Claude `claude-sonnet-4-5-20250929`, OpenAI `gpt-5.2-codex`, Gemini `gemini-3-flash-preview`.
-
-### Batch learning input
+Batch learning accepts either a JSON object matching the Supermemory batch endpoint or JSONL prompt records:
 
 ```json
 {"containerTag":"ace","source":"cli","prompts":["Use pnpm.","Prefer tests first."]}
@@ -232,133 +137,594 @@ Default third-party models: Claude `claude-sonnet-4-5-20250929`, OpenAI `gpt-5.2
 {"prompt":"Prefer tests first."}
 ```
 
-JSONL imports fill in the configured `--container-tag` / `ACE_CONTAINER_TAG` when `containerTag` is omitted.
+If `containerTag` is omitted from the JSON object, the configured `--container-tag` / `ACE_CONTAINER_TAG` value is filled in. JSONL imports create a batch request with the configured container tag and each non-empty `prompt` string.
 
-### Adaptive upload strategy
+### Transport Framing
 
-Adaptive uploads are enabled by default. The server starts cautiously, increases concurrency when success stays high, and backs off on timeouts, rate limits, or latency spikes. Use the CLI overrides when you need fixed behavior.
+By default, the server auto-detects line-delimited JSON vs. LSP `Content-Length` framing.
+If your client requires a specific mode, force it:
 
-| Setting | Default behavior | Bounds / override |
-|---------|------------------|-------------------|
-| Concurrency | AIMD adaptive | `1`-`8`, or `--upload-concurrency <n>` |
-| Timeout | AIMD adaptive | `15s`-`180s`, or `--upload-timeout <seconds>` |
-| Disable adaptation | Off | `--no-adaptive` uses static scale settings |
-
-<details>
-<summary>Project scale strategies</summary>
-
-| Scale | Blob count | Batch size | Target concurrency | Target timeout |
-|-------|------------|------------|-------------------|----------------|
-| Small | `< 100` | `10` | `1` | `30s` |
-| Medium | `100-499` | `30` | `2` | `45s` |
-| Large | `500-1999` | `50` | `3` | `60s` |
-| Extra Large | `2000+` | `70` | `4` | `90s` |
-
-</details>
-
-### Transport framing
-
-Use `--transport auto` for most agents. Use `--transport lsp` for clients that require `Content-Length` framing, or `--transport line` for line-delimited JSON.
-
-</details>
+```bash
+not-ace-tool-rs --base-url https://api.example.com --token your-token-here --transport lsp
+```
 
 ## MCP Integration
 
+### Codex CLI Configuration
+
+Add to your Codex config file (typically `~/.codex/config.toml`):
+
+```toml
+[mcp_servers.not-ace-tool]
+command = "npx"
+args = ["not-ace-tool-rs", "--base-url", "https://api.example.com", "--token", "your-token-here", "--transport", "lsp"]
+env = { RUST_LOG = "info" }
+startup_timeout_ms = 60000
+```
+
+### Claude Desktop Configuration
+
+Add to your Claude Desktop configuration file:
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "not-ace-tool": {
+      "command": "npx",
+      "args": [
+        "not-ace-tool-rs",
+        "--base-url", "https://api.example.com",
+        "--token", "your-token-here"
+      ]
+    }
+  }
+}
+```
+
 ### Claude Code
 
-1. Run `claude mcp add-json not-ace-tool --scope user '<Claude Code JSON from Quick Start>'`.
-2. If permissions are enforced, allow `mcp__not-ace-tool__*` tools.
-3. Restart Claude Code.
+Run command like below:
 
-### Cursor
+```bash
+claude mcp add-json not-ace-tool --scope user '{"type":"stdio","command":"npx","args":["not-ace-tool-rs","--base-url","https://api.example.com/","--token","your-token-here"],"env":{}}'
+```
 
-1. Open Cursor Settings → MCP.
-2. Paste the Cursor JSON from Quick Start.
-3. Restart Cursor.
+Modify `~/.claude/settings.json` to add permission for the tools:
 
-### OpenCode
+```json
+$ cat settings.local.json
+{
+  "permissions": {
+    "allow": [
+      "mcp__not-ace-tool__search_context",
+      "mcp__not-ace-tool__enhance_prompt",
+      "mcp__not-ace-tool__memory",
+      "mcp__not-ace-tool__recall",
+      "mcp__not-ace-tool__memory_forget",
+      "mcp__not-ace-tool__memory_list",
+      "mcp__not-ace-tool__memory_profile",
+      "mcp__not-ace-tool__memory_event",
+      "mcp__not-ace-tool__batch_learn",
+      "mcp__not-ace-tool__task_group",
+      "mcp__not-ace-tool__task",
+      "mcp__not-ace-tool__plan",
+      "mcp__not-ace-tool__ask_project",
+      "mcp__not-ace-tool__taste_context",
+      "mcp__not-ace-tool__taste_profile"
+    ]
+  }
+}
+```
 
-1. Add the OpenCode JSON from Quick Start to `opencode.json`.
-2. Keep `enabled` set to `true`.
-3. Restart OpenCode.
+### Available Tools
 
-### Claude Desktop
+Memory tools (`memory`, `recall`, `memory_forget`, `memory_list`, `memory_profile`, `memory_event`, and `batch_learn`) are gated by `ACE_ENABLE_MEMORY_TOOLS`.
+Task tools (`task_group`, `task`, `plan`, `ask_project`) are gated by `ACE_ENABLE_TASK_TOOLS`.
 
-1. Add a `not-ace-tool` entry under `mcpServers` in `claude_desktop_config.json`.
-2. Use `command: "npx"` with args `[-y, not-ace-tool-rs, --base-url, https://api.example.com, --token, your-token-here]`.
-3. Restart Claude Desktop.
+#### `search_context`
 
-### Codex CLI
+Search the codebase using natural language queries.
 
-1. Add `[mcp_servers.not-ace-tool]` to `~/.codex/config.toml`.
-2. Set `command = "npx"` and `args = ["-y", "not-ace-tool-rs", "--base-url", "https://api.example.com", "--token", "your-token-here", "--transport", "lsp"]`.
-3. Set `startup_timeout_ms = 60000`.
+**Parameters:**
 
-## Supported Languages & Files
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_root_path` | string | Yes | Absolute path to the project root directory |
+| `query` | string | Yes | Natural language description of the code you're looking for |
 
-- **Languages:** Python, JavaScript, TypeScript, Java, Go, Rust, C/C++, C#, Ruby, PHP, Swift, Kotlin, Scala, Clojure, Lua, Dart, R, Julia, Elixir, Erlang, Haskell, Zig, Nim, Solidity, Move, and more.
-- **Web / config / data:** HTML, CSS, Sass, Vue, Svelte, Astro, Markdown, JSON, YAML, TOML, XML, INI, SQL, GraphQL, Proto, Prisma, CSV, TSV.
-- **Known filenames:** `Makefile`, `Dockerfile`, `Containerfile`, `Jenkinsfile`, `Procfile`, `.gitignore`, `.env.example`, `requirements.txt`, `README`, `LICENSE`, and similar project files.
-- **Limits:** text files are chunked up to `128KB` per blob and `1MB` per upload batch.
+**Example queries:**
 
-<details><summary>Default exclusions</summary>
-Dependencies, virtualenvs, VCS folders, build outputs, caches, coverage, IDE folders, binaries, archives, lock files, logs, media, fonts, and database files are skipped by default.
-</details>
+- "Where is the function that handles user authentication?"
+- "What tests are there for the login functionality?"
+- "How is the database connected to the application?"
+- "Find the initialization flow of message queue consumers"
+
+#### `enhance_prompt`
+
+Enhance user prompts by combining codebase context and conversation history to generate clearer, more specific, and actionable prompts.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `prompt` | string | Yes | The original prompt to enhance |
+| `conversation_history` | string | Yes | Recent conversation history (5-10 rounds) in format: `User: xxx\nAssistant: yyy` |
+| `project_root_path` | string | No | Absolute path to the project root directory (optional, defaults to current working directory) |
+
+**Features:**
+
+- Automatic language detection (Chinese input → Chinese output, English input → English output)
+- Uses codebase context from indexed files
+- Considers conversation history for better context understanding
+
+**API Endpoints:**
+
+The tool supports multiple backend endpoints, controlled by the `ACE_ENHANCER_ENDPOINT` environment variable:
+
+| Endpoint | Description | Configuration |
+|----------|-------------|---------------|
+| `new` (default) | Augment `/prompt-enhancer` endpoint | Uses `--base-url` and `--token` CLI args |
+| `old` | Augment `/chat-stream` endpoint (streaming) | Uses `--base-url` and `--token` CLI args |
+| `claude` | Claude API (Anthropic) | Uses `PROMPT_ENHANCER_*` env vars |
+| `openai` | OpenAI API | Uses `PROMPT_ENHANCER_*` env vars |
+| `gemini` | Gemini API (Google) | Uses `PROMPT_ENHANCER_*` env vars |
+
+**Default Models for Third-Party APIs:**
+
+| Provider | Default Model |
+|----------|---------------|
+| Claude | `claude-sonnet-4-5-20250929` |
+| OpenAI | `gpt-5.2-codex` |
+| Gemini | `gemini-3-flash-preview` |
+
+#### `memory`
+
+Save a memory into Supermemory for the configured container.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `content` | string | Yes | Memory text to store |
+| `container_tag` | string | No | Container override; defaults to configured container tag |
+| `metadata` | object | No | Optional structured metadata |
+| `task_type` | string | No | Optional Supermemory task type |
+
+#### `recall`
+
+Search Supermemory using a natural language query.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `query` | string | Yes | Search query |
+| `container_tag` | string | No | Container override; defaults to configured container tag |
+| `limit` | number | No | Maximum results |
+| `search_mode` | string | No | Search mode such as `hybrid` |
+| `threshold` | number | No | Similarity threshold; server default is `0.5`. Use `0.2`-`0.4` for broader recall |
+
+#### `memory_forget`
+
+Forget a memory from Supermemory for the configured container using DELETE `/v4/memories`.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | No | Fact ID from a `recall` search result's `id` field (not the document ID returned when saving) |
+| `content` | string | No | Exact memory content to forget |
+| `container_tag` / `containerTag` | string | No | Container override; defaults to configured container tag |
+
+At least one of `id` or `content` is required. Returns `Forgot memory <id>`.
+
+#### `memory_list`
+
+List memory documents in the configured container with pagination using POST `/v3/documents/list`.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `container_tag` / `containerTag` | string | No | Container override; defaults to configured container tag |
+| `limit` | integer | No | Page size (default: `20`) |
+| `page` | integer | No | Page number |
+| `include_content` | boolean | No | Include document content in results (default: `true`) |
+
+Returns JSON containing `memories` and `pagination`.
+
+#### `memory_profile`
+
+Export the Supermemory profile for the configured container using POST `/v4/profile`, including static and dynamic facts with optional search.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `container_tag` / `containerTag` | string | No | Container override; defaults to configured container tag |
+| `q` | string | No | Optional search query to include profile-relevant facts |
+| `threshold` | number | No | Optional similarity threshold for search |
+
+Returns JSON.
+
+#### `memory_event`
+
+Submit a learning event such as accepted output, user edits, or workflow feedback.
+
+Accepted `type` values are: `prompt_submitted`, `assistant_response_accepted`, `assistant_response_rejected`, `user_edited_code`, `user_reverted_change`, `review_comment_added`, `preference_corrected`, `session_imported`.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `type` | string | Yes | Server allowlisted event type |
+| `content` | string | Yes | Event content |
+| `container_tag` | string | No | Container override; defaults to configured container tag |
+| `source` | string | No | Source label such as `mcp` or `cli` |
+| `metadata` | object | No | Optional structured metadata |
+
+#### `batch_learn`
+
+Import a batch of prompts/events for learning.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `prompts` | array<string> | Yes | Prompt or event texts to import |
+| `container_tag` | string | No | Container override; defaults to configured container tag |
+| `source` | string | No | Source label such as `session` or `cli` |
+
+#### `task_group`
+
+Manage server-side task groups (projects/plans). A task group binds a persistent cross-session todo list to a project.
+
+Actions: `create` (requires `name`, optional `blob_names`), `list`, and `delete` (requires `group_id`).
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `action` | string | Yes | `create`, `list`, or `delete` |
+| `name` | string | For `create` | Task group name |
+| `blob_names` | array<string> | No | Optional blob scope to bind when creating the task group |
+| `group_id` | string | For `delete` | Task group id |
+
+**Example:**
+
+```json
+{"action":"create","name":"Checkout refactor","blob_names":["src/main.rs"]}
+```
+
+#### `task`
+
+Manage tasks in a group. Use `add` with a tasks array to save a confirmed plan draft; batch adds are supported.
+
+Actions: `add` (requires `group_id` and `tasks` array), `update` (requires `task_id` plus `content`, `status`, or `sort_order`), `list` (optional `group_id` and `status_filter`), and `delete` (requires `task_id`). Statuses: `pending`, `in_progress`, `done`, `cancelled`.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `action` | string | Yes | `add`, `update`, `list`, or `delete` |
+| `group_id` | string | For `add`; optional for `list` | Task group id |
+| `tasks` | array<object> | For `add` | Tasks to add; each item requires `content` and may include `status` and `sort_order` |
+| `task_id` | string | For `update`/`delete` | Task id |
+| `content` | string | No | Updated task content |
+| `status` | string | No | Updated task status: `pending`, `in_progress`, `done`, or `cancelled` |
+| `sort_order` | integer | No | Updated sort order |
+| `status_filter` | string | No | Optional status filter for `list` |
+
+**Example:**
+
+```json
+{"action":"add","group_id":"tg_123","tasks":[{"content":"Add tests for task tools","status":"pending","sort_order":1}]}
+```
+
+#### `plan`
+
+Generate a draft todo list for a requirement using server-side codebase retrieval and project memory. Returns a DRAFT only; confirm with the user, then persist confirmed items via `task` (`action=add`).
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_root_path` | string | Yes | Absolute path to the project root directory |
+| `requirement` | string | Yes | Requirement to turn into a draft todo list |
+| `container_tag` | string | No | Optional memory container tag |
+
+**Example:**
+
+```json
+{"project_root_path":"/data/ace","requirement":"Document the new task MCP tools","container_tag":"ace"}
+```
+
+#### `ask_project`
+
+Ask a question about the project; returns a concise synthesized answer grounded in codebase retrieval and project memory.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_root_path` | string | Yes | Absolute path to the project root directory |
+| `question` | string | Yes | Question to answer about the project |
+| `container_tag` | string | No | Optional memory container tag |
+
+**Example:**
+
+```json
+{"project_root_path":"/data/ace","question":"Where are MCP tools registered?","container_tag":"ace"}
+```
+
+#### `taste_context`
+
+Retrieve Taste context relevant to the current task.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `query` | string | Yes | Query describing the task or preference context needed |
+| `container_tag` | string | No | Container override; defaults to configured container tag |
+| `limit` | number | No | Maximum memories to include |
+
+#### `taste_profile`
+
+Export the Taste profile for the configured container.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `container_tag` | string | No | Container override; defaults to configured container tag |
+| `format` | string | No | `markdown` (default) or `json` |
+
+**Example using Claude API:**
+
+```bash
+# For MCP server mode, --base-url and --token are still required
+export ACE_ENHANCER_ENDPOINT=claude
+export PROMPT_ENHANCER_BASE_URL=https://api.anthropic.com
+export PROMPT_ENHANCER_TOKEN=your-anthropic-api-key
+not-ace-tool-rs --base-url https://api.example.com --token your-token
+
+# For --enhance-prompt mode with third-party endpoints, --base-url and --token are optional
+export ACE_ENHANCER_ENDPOINT=claude
+export PROMPT_ENHANCER_BASE_URL=https://api.anthropic.com
+export PROMPT_ENHANCER_TOKEN=your-anthropic-api-key
+not-ace-tool-rs --enhance-prompt "Add user authentication"
+```
+
+## Supported File Types
+
+### Programming Languages
+
+`.py`, `.js`, `.ts`, `.jsx`, `.tsx`, `.java`, `.go`, `.rs`, `.cpp`, `.c`, `.h`, `.cs`, `.rb`, `.php`, `.swift`, `.kt`, `.scala`, `.lua`, `.dart`, `.r`, `.jl`, `.ex`, `.hs`, `.zig`, and many more.
+
+### Configuration & Data
+
+`.json`, `.yaml`, `.yml`, `.toml`, `.xml`, `.ini`, `.conf`, `.md`, `.txt`
+
+### Web Technologies
+
+`.html`, `.css`, `.scss`, `.sass`, `.vue`, `.svelte`, `.astro`
+
+### Special Files
+
+`Makefile`, `Dockerfile`, `Jenkinsfile`, `.gitignore`, `.env.example`, `requirements.txt`, and more.
+
+## Default Exclusions
+
+The following patterns are excluded by default:
+
+- **Dependencies**: `node_modules`, `vendor`, `.venv`, `venv`
+- **Build artifacts**: `target`, `dist`, `build`, `out`, `.next`
+- **Version control**: `.git`, `.svn`, `.hg`
+- **Cache directories**: `__pycache__`, `.cache`, `.pytest_cache`
+- **Binary files**: `*.exe`, `*.dll`, `*.so`, `*.pyc`
+- **Media files**: `*.png`, `*.jpg`, `*.mp4`, `*.pdf`
+- **Lock files**: `package-lock.json`, `yarn.lock`, `Cargo.lock`
 
 ## Architecture
 
-<details>
-<summary>Directory tree</summary>
-
-```text
+```
 not-ace-tool-rs/
 ├── src/
-│   ├── main.rs
-│   ├── lib.rs
-│   ├── config.rs
+│   ├── main.rs          # Entry point and CLI
+│   ├── lib.rs           # Library exports
+│   ├── config.rs        # Configuration and upload strategies
 │   ├── enhancer/
+│   │   ├── mod.rs
+│   │   ├── prompt_enhancer.rs  # Prompt enhancement orchestration
+│   │   └── templates.rs        # Enhancement prompt templates
 │   ├── index/
+│   │   ├── mod.rs
+│   │   └── manager.rs   # Core indexing and search logic
 │   ├── mcp/
+│   │   ├── mod.rs
+│   │   ├── server.rs    # MCP server implementation
+│   │   └── types.rs     # JSON-RPC types
 │   ├── service/
+│   │   ├── mod.rs       # Service module exports
+│   │   ├── common.rs    # Shared types and utilities
+│   │   ├── augment.rs   # Augment New/Old endpoints
+│   │   ├── claude.rs    # Claude API (Anthropic)
+│   │   ├── openai.rs    # OpenAI API
+│   │   ├── gemini.rs    # Gemini API (Google)
+│   │   ├── supermemory.rs # Supermemory memory, recall, Taste, and batch learning client
+│   │   └── tasks.rs       # Task groups, tasks, plan, and project Q&A client
 │   ├── strategy/
+│   │   ├── mod.rs
+│   │   ├── adaptive.rs  # AIMD algorithm implementation
+│   │   └── metrics.rs   # EWMA and runtime metrics
 │   ├── tools/
-│   │   ├── search_context.rs
-│   │   ├── enhance_prompt.rs
-│   │   ├── memory.rs
-│   │   ├── recall.rs
-│   │   ├── memory_forget.rs
-│   │   ├── memory_list.rs
-│   │   ├── memory_profile.rs
-│   │   ├── memory_event.rs
-│   │   ├── batch_learn.rs
-│   │   ├── taste_context.rs
-│   │   ├── taste_profile.rs
-│   │   ├── task_group.rs
-│   │   ├── task.rs
-│   │   ├── plan.rs
-│   │   ├── ask_project.rs
-│   │   ├── web_search.rs
-│   │   ├── search_papers.rs
-│   │   ├── search_images.rs
-│   │   └── web_fetch.rs
+│   │   ├── mod.rs
+│   │   ├── search_context.rs  # Search tool implementation
+│   │   ├── memory.rs          # Save memory tool
+│   │   ├── recall.rs          # Recall/search memory tool
+│   │   ├── memory_forget.rs   # Forget memory tool
+│   │   ├── memory_list.rs     # List memory documents tool
+│   │   ├── memory_profile.rs  # Memory profile export tool
+│   │   ├── memory_event.rs    # Learning event tool
+│   │   ├── batch_learn.rs     # Batch learning tool
+│   │   ├── task_group.rs      # Task group management tool
+│   │   ├── task.rs            # Task management tool
+│   │   ├── plan.rs            # Draft plan generation tool
+│   │   ├── ask_project.rs     # Project Q&A tool
+│   │   ├── taste_context.rs   # Taste-aware context tool
+│   │   └── taste_profile.rs   # Taste profile export tool
 │   └── utils/
-└── tests/
+│       ├── mod.rs
+│       └── project_detector.rs  # Project utilities
+└── tests/               # Integration tests
+    ├── config_test.rs
+    ├── index_test.rs
+    ├── mcp_test.rs
+    ├── prompt_enhancer_test.rs
+    ├── supermemory_client_test.rs
+    ├── third_party_api_test.rs
+    ├── tools_test.rs
+    ├── mcp_server_test.rs
+    └── utils_test.rs
 ```
 
-</details>
+## Adaptive Upload Strategy
+
+The tool uses an AIMD (Additive Increase, Multiplicative Decrease) algorithm inspired by TCP congestion control to dynamically optimize upload performance:
+
+### How It Works
+
+1. **Warmup Phase**: Starts with concurrency=1, evaluates success rate over 5-10 requests, then jumps to target concurrency if successful
+2. **Additive Increase**: When success rate > 95% and latency is healthy, concurrency increases by 1
+3. **Multiplicative Decrease**: When success rate < 70%, rate limited, or high latency, concurrency halves and timeout increases by 50%
+
+### Metrics
+
+- **EWMA Latency**: Exponentially weighted moving average (α=0.2) for latency smoothing
+- **Success Rate**: Calculated over a sliding window of 20 requests
+- **Latency Health**: Compared against a fixed baseline to detect degradation
+
+### Safety Bounds
+
+| Parameter | Minimum | Maximum |
+|-----------|---------|---------|
+| Concurrency | 1 | 8 |
+| Timeout | 15s | 180s |
+
+### CLI Overrides
+
+You can override individual parameters while keeping others adaptive:
+
+```bash
+# Fixed concurrency, adaptive timeout
+not-ace-tool-rs --base-url ... --token ... --upload-concurrency 4
+
+# Fixed timeout, adaptive concurrency
+not-ace-tool-rs --base-url ... --token ... --upload-timeout 60
+
+# Disable adaptive entirely (use static heuristic)
+not-ace-tool-rs --base-url ... --token ... --no-adaptive
+```
+
+## Project Scale Strategies
+
+The tool uses heuristic-based initial values based on project size. With adaptive mode enabled (default), these serve as target values that the AIMD algorithm works toward:
+
+| Scale | Blob Count | Batch Size | Target Concurrency | Target Timeout |
+|-------|------------|------------|-------------------|----------------|
+| Small | < 100 | 10 | 1 | 30s |
+| Medium | 100-499 | 30 | 2 | 45s |
+| Large | 500-1999 | 50 | 3 | 60s |
+| Extra Large | 2000+ | 70 | 4 | 90s |
+
+With `--no-adaptive`, these values are used directly without runtime adjustment.
 
 ## Development
 
+### Running Tests
+
 ```bash
-cargo build --release
+# Run all tests
 cargo test
-cargo clippy --all-targets --all-features
+
+# Run with output
+cargo test -- --nocapture
+
+# Run specific test
+cargo test test_config_new
 ```
 
-## Author
+### Building
 
-linze0721
+```bash
+# Debug build
+cargo build
+
+# Release build
+cargo build --release
+
+# Check without building
+cargo check
+
+# Run clippy lints
+cargo clippy
+```
+
+### Code Structure
+
+- **390+ unit tests** covering all major components
+- Modular architecture with clear separation of concerns
+- Async/await throughout using Tokio runtime
+- Parallel file processing using Rayon
+- Comprehensive error handling with `anyhow`
+
+## Limitations
+
+- Only processes the root `.gitignore` file (nested `.gitignore` files are not supported)
+- Requires network access to the indexing API
+- Maximum file size: 128KB per file
+- Maximum batch size: 1MB per upload batch
 
 ## License
 
-not-ace-tool-rs is dual-licensed: GPLv3 for personal, educational, open source, and other non-commercial use; commercial/workplace use requires a commercial license. See [LICENSE](LICENSE) and [LICENSE-COMMERCIAL](LICENSE-COMMERCIAL) for the full terms.
+This project is dual-licensed:
+
+### Non-Commercial / Personal Use - GNU General Public License v3.0
+
+Free for personal projects, educational purposes, open source projects, and non-commercial use. See [LICENSE](LICENSE) for the full GPLv3 license text.
+
+### Commercial / Workplace Use - Commercial License Required
+
+**If you use this vendored Not ACE client in a commercial environment, workplace, or for any commercial purpose, you must comply with the upstream commercial licensing terms.**
+
+This includes but is not limited to:
+- Using the software at work (any organization)
+- Integrating into commercial products or services
+- Using for client work or consulting
+- Offering as part of a SaaS/cloud service
+
+**Contact**: missdeer@gmail.com for commercial licensing inquiries.
+
+See [LICENSE-COMMERCIAL](LICENSE-COMMERCIAL) for more details.
+
+## Author
+
+[missdeer](https://github.com/missdeer)
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Star History
+
+The historical upstream `ace-tool-rs` Star History chart is omitted for this vendored Not ACE fork.

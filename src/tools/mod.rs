@@ -3,6 +3,8 @@
 pub mod ask_project;
 pub mod batch_learn;
 pub mod enhance_prompt;
+pub mod goal;
+pub mod goal_phase;
 pub mod memory;
 pub mod memory_event;
 pub mod memory_forget;
@@ -23,6 +25,8 @@ pub mod web_search;
 pub use ask_project::AskProjectTool;
 pub use batch_learn::BatchLearnTool;
 pub use enhance_prompt::EnhancePromptTool;
+pub use goal::GoalTool;
+pub use goal_phase::GoalPhaseTool;
 pub use memory::MemoryTool;
 pub use memory_event::MemoryEventTool;
 pub use memory_forget::MemoryForgetTool;

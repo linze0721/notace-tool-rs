@@ -1,6 +1,6 @@
 [package]
 name = "not-ace-tool-rs"
-version = "0.2.0"
+version = "0.5.0"
 edition = "2021"
 description = "Not ACE MCP client for code search, Supermemory, Taste learning, and prompt enhancement"
 license = "GPL-3.0-only OR LicenseRef-Commercial"

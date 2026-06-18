@@ -13,6 +13,8 @@ use crate::config::Config;
 use crate::tools::ask_project::{AskProjectArgs, AskProjectToolDef, ASK_PROJECT_TOOL};
 use crate::tools::batch_learn::{BatchLearnArgs, BatchLearnToolDef, BATCH_LEARN_TOOL};
 use crate::tools::enhance_prompt::{EnhancePromptArgs, EnhancePromptToolDef, ENHANCE_PROMPT_TOOL};
+use crate::tools::goal::{GoalArgs, GoalToolDef, GOAL_TOOL};
+use crate::tools::goal_phase::{GoalPhaseArgs, GoalPhaseToolDef, GOAL_PHASE_TOOL};
 use crate::tools::memory::{MemoryArgs, MemoryToolDef, MEMORY_TOOL};
 use crate::tools::memory_event::{MemoryEventArgs, MemoryEventToolDef, MEMORY_EVENT_TOOL};
 use crate::tools::memory_forget::{MemoryForgetArgs, MemoryForgetToolDef, MEMORY_FORGET_TOOL};
@@ -30,10 +32,10 @@ use crate::tools::taste_profile::{TasteProfileArgs, TasteProfileToolDef, TASTE_P
 use crate::tools::web_fetch::{WebFetchArgs, WebFetchToolDef, WEB_FETCH_TOOL};
 use crate::tools::web_search::{WebSearchArgs, WebSearchTool, WebSearchToolDef, WEB_SEARCH_TOOL};
 use crate::tools::{
-    AskProjectTool, BatchLearnTool, EnhancePromptTool, MemoryEventTool, MemoryForgetTool,
-    MemoryListTool, MemoryProfileTool, MemoryTool, PlanTool, RecallTool, SearchContextTool,
-    SearchImagesTool, SearchPapersTool, TaskGroupTool, TaskTool, TasteContextTool,
-    TasteProfileTool, WebFetchTool,
+    AskProjectTool, BatchLearnTool, EnhancePromptTool, GoalPhaseTool, GoalTool, MemoryEventTool,
+    MemoryForgetTool, MemoryListTool, MemoryProfileTool, MemoryTool, PlanTool, RecallTool,
+    SearchContextTool, SearchImagesTool, SearchPapersTool, TaskGroupTool, TaskTool,
+    TasteContextTool, TasteProfileTool, WebFetchTool,
 };
 
 /// Map tool name aliases to canonical names
@@ -380,7 +382,7 @@ impl McpServer {
             },
             server_info: ServerInfo {
                 name: "not-ace-tool".to_string(),
-                version: "0.1.12".to_string(),
+                version: "0.5.0".to_string(),
             },
         };
 
@@ -513,6 +515,21 @@ impl McpServer {
                     name: ASK_PROJECT_TOOL.name.to_string(),
                     description: ASK_PROJECT_TOOL.description.to_string(),
                     input_schema: AskProjectToolDef::get_input_schema(),
+                },
+            ]);
+        }
+
+        if self.config.enable_goal_tools {
+            tools.extend([
+                Tool {
+                    name: GOAL_TOOL.name.to_string(),
+                    description: GOAL_TOOL.description.to_string(),
+                    input_schema: GoalToolDef::get_input_schema(),
+                },
+                Tool {
+                    name: GOAL_PHASE_TOOL.name.to_string(),
+                    description: GOAL_PHASE_TOOL.description.to_string(),
+                    input_schema: GoalPhaseToolDef::get_input_schema(),
                 },
             ]);
         }
@@ -825,6 +842,38 @@ impl McpServer {
                 let result = tool.execute(args).await;
                 Self::text_tool_response(id, result.text)
             }
+            "goal" => {
+                if !self.config.enable_goal_tools {
+                    return JsonRpcResponse::error(
+                        id,
+                        -32602,
+                        "Tool 'goal' is disabled".to_string(),
+                    );
+                }
+                let args: GoalArgs = match Self::parse_tool_args(&id, call_params.arguments) {
+                    Ok(args) => args,
+                    Err(response) => return *response,
+                };
+                let tool = GoalTool::new(self.config.clone());
+                let result = tool.execute(args).await;
+                Self::text_tool_response(id, result.text)
+            }
+            "goal_phase" => {
+                if !self.config.enable_goal_tools {
+                    return JsonRpcResponse::error(
+                        id,
+                        -32602,
+                        "Tool 'goal_phase' is disabled".to_string(),
+                    );
+                }
+                let args: GoalPhaseArgs = match Self::parse_tool_args(&id, call_params.arguments) {
+                    Ok(args) => args,
+                    Err(response) => return *response,
+                };
+                let tool = GoalPhaseTool::new(self.config.clone());
+                let result = tool.execute(args).await;
+                Self::text_tool_response(id, result.text)
+            }
             "taste_context" => {
                 if !self.config.enable_taste_tools {
                     return JsonRpcResponse::error(
@@ -938,6 +987,7 @@ mod tests {
             enable_memory_tools,
             enable_taste_tools,
             enable_task_tools,
+            enable_goal_tools: true,
             max_lines_per_blob: 800,
             retrieval_timeout_secs: 60,
             no_adaptive: false,
@@ -977,6 +1027,8 @@ mod tests {
         assert!(names.contains(&"task".to_string()));
         assert!(names.contains(&"plan".to_string()));
         assert!(names.contains(&"ask_project".to_string()));
+        assert!(names.contains(&"goal".to_string()));
+        assert!(names.contains(&"goal_phase".to_string()));
         assert!(names.contains(&"web_search".to_string()));
         assert!(names.contains(&"search_papers".to_string()));
         assert!(names.contains(&"search_images".to_string()));
@@ -988,11 +1040,11 @@ mod tests {
         let _prompt_enhancer = EnvVarGuard::set("PROMPT_ENHANCER", "enabled");
         let server = McpServer::new(test_config(true, true), None);
         let names = listed_tool_names(&server);
-        assert_eq!(names.len(), 19);
+        assert_eq!(names.len(), 21);
 
         let server = McpServer::new(test_config_with_task_tools(true, true, false), None);
         let names = listed_tool_names(&server);
-        assert_eq!(names.len(), 15);
+        assert_eq!(names.len(), 17);
         assert!(!names.contains(&"task_group".to_string()));
         assert!(!names.contains(&"task".to_string()));
         assert!(!names.contains(&"plan".to_string()));

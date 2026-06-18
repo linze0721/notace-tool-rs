@@ -4,6 +4,7 @@ pub(crate) mod augment;
 pub(crate) mod claude;
 pub mod common;
 pub(crate) mod gemini;
+pub mod goals;
 pub(crate) mod openai;
 pub mod supermemory;
 pub mod tasks;
