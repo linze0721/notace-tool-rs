@@ -1,7 +1,5 @@
 # not-ace-tool-rs
 
-> **Vendored Not ACE client:** This directory contains the Not ACE fork of the upstream `ace-tool-rs` client, vendored into the ACE workspace with local modifications for Not ACE integration. Some internal paths and cache directories may still use the upstream `.ace-tool` name for compatibility.
-
 English | [简体中文](README-zh-CN.md)
 
 A high-performance MCP (Model Context Protocol) server for codebase indexing, semantic search, and prompt enhancement, written in Rust.
@@ -17,6 +15,7 @@ not-ace-tool-rs is a Rust implementation of a codebase context engine that enabl
 - **Incremental updates** - Uses mtime caching to skip unchanged files and only uploads new/modified content
 - **Parallel processing** - Multi-threaded file scanning and processing for faster indexing
 - **Smart exclusions** - Respects `.gitignore` and common ignore patterns
+- **Supergoal planning** - AI-augmented deep planning with phase decomposition, 3-strike self-healing, and audit verification
 
 ## Features
 
@@ -26,6 +25,9 @@ not-ace-tool-rs is a Rust implementation of a codebase context engine that enabl
 - **Concurrent Uploads** - Parallel batch uploads with sliding window for faster indexing of large projects
 - **Mtime Caching** - Tracks file modification times to avoid re-processing unchanged files
 - **Robust Error Handling** - Retry logic with exponential backoff and rate limiting support
+- **Goal Lifecycle Management** - Create goals with AI-powered planning that leverages code index, memory, and taste preferences
+- **Phase Execution Tracking** - Start, verify, fail, heal, and audit phases with evidence-based verification
+- **3-Strike Self-Healing** - Automatic failure escalation with memory-assisted recovery suggestions
 
 ## Installation
 
@@ -106,6 +108,7 @@ not-ace-tool-rs --base-url <API_URL> --token <AUTH_TOKEN>
 | `ACE_ENABLE_MEMORY_TOOLS` | Control `memory`, `recall`, `memory_forget`, `memory_list`, `memory_profile`, `memory_event`, and `batch_learn` exposure. Set to `disabled`, `false`, `0`, or `off` to hide and reject these tools |
 | `ACE_ENABLE_TASTE_TOOLS` | Control `taste_context` and `taste_profile` exposure. Set to `disabled`, `false`, `0`, or `off` to hide and reject these tools |
 | `ACE_ENABLE_TASK_TOOLS` | Control `task_group`, `task`, `plan`, and `ask_project` exposure. Set to `disabled`, `false`, `0`, or `off` to hide and reject these tools. Default enabled. |
+| `ACE_ENABLE_GOAL_TOOLS` | Control `goal` and `goal_phase` exposure. Set to `disabled`, `false`, `0`, or `off` to hide and reject these tools. Default enabled. |
 
 ### Example
 
@@ -213,7 +216,9 @@ $ cat settings.local.json
       "mcp__not-ace-tool__plan",
       "mcp__not-ace-tool__ask_project",
       "mcp__not-ace-tool__taste_context",
-      "mcp__not-ace-tool__taste_profile"
+      "mcp__not-ace-tool__taste_profile",
+      "mcp__not-ace-tool__goal",
+      "mcp__not-ace-tool__goal_phase"
     ]
   }
 }
@@ -223,6 +228,7 @@ $ cat settings.local.json
 
 Memory tools (`memory`, `recall`, `memory_forget`, `memory_list`, `memory_profile`, `memory_event`, and `batch_learn`) are gated by `ACE_ENABLE_MEMORY_TOOLS`.
 Task tools (`task_group`, `task`, `plan`, `ask_project`) are gated by `ACE_ENABLE_TASK_TOOLS`.
+Goal tools (`goal`, `goal_phase`) are gated by `ACE_ENABLE_GOAL_TOOLS`.
 
 #### `search_context`
 
@@ -483,6 +489,81 @@ Export the Taste profile for the configured container.
 | `container_tag` | string | No | Container override; defaults to configured container tag |
 | `format` | string | No | `markdown` (default) or `json` |
 
+#### `goal`
+
+Manage goal lifecycle with AI-augmented deep planning. Creates goals with automatic code index retrieval, memory loading, and taste-aware planning.
+
+Actions: `create`, `list`, `status`, `audit`, `complete`, `cancel`, `plan` (re-plan a failed goal).
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `action` | string | Yes | `create`, `list`, `status`, `audit`, `complete`, `cancel`, or `plan` |
+| `goal_id` | string | For most actions | Goal ID |
+| `project_root_path` | string | For `create` | Absolute path to the project root directory |
+| `name` | string | For `create` | Goal name |
+| `requirement` | string | For `create` | Requirement description |
+| `container_tag` | string | No | Optional memory container tag |
+| `audit_evidence` | object | For `audit` | Audit evidence |
+| `status_filter` | string | For `list` | Filter goals by status |
+
+**`create` pipeline:**
+
+1. Indexes the project and retrieves relevant code context
+2. Loads project memory (past learnings, failure patterns)
+3. Loads user taste profile (coding preferences)
+4. Generates a deep plan via LLM with risk analysis, phase decomposition, and self-critique
+5. Persists goal and phases to the server
+
+**Example:**
+
+```json
+{"action":"create","name":"add-auth","requirement":"Add JWT authentication middleware","project_root_path":"/home/user/myapp"}
+```
+
+#### `goal_phase`
+
+Manage phase execution within a goal. Supports 3-strike self-healing on failures.
+
+Actions: `start`, `verify`, `fail`, `heal`, `list`.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `action` | string | Yes | `start`, `verify`, `fail`, `heal`, or `list` |
+| `goal_id` | string | Yes | Goal ID |
+| `phase_id` | string | For `start`/`verify`/`fail`/`heal` | Phase ID |
+| `evidence` | object | For `verify` | Verification evidence (test results, screenshots, etc.) |
+| `error_detail` | string | For `fail` | Failure description |
+| `spec` | object | For `heal` | Healing specification |
+| `notes` | string | For `heal` | Healing notes |
+
+**3-Strike Healing:**
+
+| Strike | Server Response |
+|--------|----------------|
+| 1st failure | Searches memory for similar past failures and suggests retry approaches |
+| 2nd failure | Suggests creating a heal specification before retrying |
+| 3rd failure | Escalates — marks phase as `escalated`, goal as `failed` |
+
+**Example workflow:**
+
+```json
+// Start phase
+{"action":"start","goal_id":"<id>","phase_id":"<pid>"}
+
+// Submit verification
+{"action":"verify","goal_id":"<id>","phase_id":"<pid>","evidence":{"tests_passed":true}}
+
+// Report failure
+{"action":"fail","goal_id":"<id>","phase_id":"<pid>","error_detail":"connection timeout"}
+
+// Submit healing attempt
+{"action":"heal","goal_id":"<id>","phase_id":"<pid>","notes":"increased timeout to 30s"}
+```
+
 **Example using Claude API:**
 
 ```bash
@@ -556,7 +637,8 @@ not-ace-tool-rs/
 │   │   ├── openai.rs    # OpenAI API
 │   │   ├── gemini.rs    # Gemini API (Google)
 │   │   ├── supermemory.rs # Supermemory memory, recall, Taste, and batch learning client
-│   │   └── tasks.rs       # Task groups, tasks, plan, and project Q&A client
+│   │   ├── tasks.rs       # Task groups, tasks, plan, and project Q&A client
+│   │   └── goals.rs       # Goal lifecycle and phase execution client
 │   ├── strategy/
 │   │   ├── mod.rs
 │   │   ├── adaptive.rs  # AIMD algorithm implementation
@@ -575,6 +657,8 @@ not-ace-tool-rs/
 │   │   ├── task.rs            # Task management tool
 │   │   ├── plan.rs            # Draft plan generation tool
 │   │   ├── ask_project.rs     # Project Q&A tool
+│   │   ├── goal.rs            # Supergoal planning tool
+│   │   ├── goal_phase.rs      # Phase execution tool
 │   │   ├── taste_context.rs   # Taste-aware context tool
 │   │   └── taste_profile.rs   # Taste profile export tool
 │   └── utils/
