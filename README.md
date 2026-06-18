@@ -1,6 +1,6 @@
 # not-ace-tool-rs
 
-MCP server that gives AI coding agents codebase search, persistent memory, learned preferences, and task planning.
+MCP server that gives AI coding agents codebase search, web research, persistent memory, learned preferences, and task planning.
 
 English | [简体中文](README-zh-CN.md)
 
@@ -8,7 +8,7 @@ English | [简体中文](README-zh-CN.md)
 
 1. Install: `npx -y not-ace-tool-rs --help`
 2. Configure: paste one MCP JSON snippet below and replace `https://api.example.com` / `your-token-here`.
-3. Done: restart your agent and use `search_context`, `recall`, and `plan`.
+3. Done: restart your agent and use `search_context`, `recall`, `plan`, `web_search`, `search_papers`, `search_images`, and `web_fetch`.
 
 ### Claude Code
 
@@ -53,20 +53,25 @@ English | [简体中文](README-zh-CN.md)
 
 ## What It Does
 
-not-ace-tool-rs connects AI coding agents to your codebase through MCP. It indexes text files, retrieves relevant code with natural-language queries, and can enhance prompts with project context. It also stores durable memories, recalls past decisions, learns user preferences, and manages task plans across sessions.
+not-ace-tool-rs connects AI coding agents to your codebase through MCP. It indexes text files, retrieves relevant code with natural-language queries, and can enhance prompts with project context. It also searches the web, academic papers, and images, fetches clean page content, stores durable memories, recalls past decisions, learns user preferences, and manages task plans across sessions.
 
 - 🔎 **Codebase search** — ask for behavior, architecture, tests, or flows without knowing file names.
+- 🌐 **Web & research** — search the web, papers, and images, then fetch clean page content.
 - 🧠 **Persistent memory** — save and recall project facts, decisions, and workflow context.
 - ✨ **Learned preferences** — expose Taste context so agents can follow your style and habits.
 - ✅ **Task planning** — create draft plans, persistent task groups, and project-aware Q&A.
 - ⚡ **Fast indexing** — incremental mtime caching, parallel scanning, and adaptive uploads.
 
-## Tools (15 tools)
+## Tools (19 tools)
 
 | Group | Tool | Description | Key params |
 |-------|------|-------------|------------|
 | Code Search | `search_context` | Find relevant code by natural-language query. | `project_root_path`, `query` |
 | Code Search | `enhance_prompt` | Rewrite a request with codebase and conversation context. | `prompt`, `conversation_history`, `project_root_path?` |
+| Web & Research | `web_search` | Search the web with quick, broad, or deep research modes. | `query`, `mode?`, `count?`, `max_rounds?` |
+| Web & Research | `search_papers` | Search academic papers on arXiv and SSRN. | `query`, `source?`, `count?`, `extract_content?` |
+| Web & Research | `search_images` | Search images across the web. | `query`, `count?` |
+| Web & Research | `web_fetch` | Fetch a page and extract clean markdown or text. | `url`, `format?` |
 | Memory | `memory` | Save durable knowledge to the configured container. | `content`, `container_tag?`, `metadata?` |
 | Memory | `recall` | Search saved memories with semantic recall. | `query`, `limit?`, `threshold?` |
 | Memory | `memory_forget` | Delete a saved memory by fact id or exact content. | `id?`, `content?` |
@@ -88,6 +93,10 @@ not-ace-tool-rs connects AI coding agents to your codebase through MCP. It index
 |------|----------|------------------|
 | `search_context` | `project_root_path`, `query` | `project_root_path` must be absolute. |
 | `enhance_prompt` | `prompt`, `conversation_history` | `project_root_path`; `conversation_history` is usually 5-10 recent rounds. |
+| `web_search` | `query` | `mode` (`search`, `broad`, `deep`; default `search`), `count` (default `5`), `max_rounds` (default `3`, deep mode only). `search` returns quick results; `broad` decomposes the query into sub-queries, searches each, and synthesizes an answer; `deep` runs plan → search → analyze → report. |
+| `search_papers` | `query` | `source` (`arxiv`, `ssrn`, `all`; default `all`), `count` (default `5`), `extract_content` (default `true`; extracts full paper content). Returns titles, abstracts, and optionally extracted PDF content. |
+| `search_images` | `query` | `count` (default `5`); returns image URLs and descriptions. |
+| `web_fetch` | `url` | `format` (`markdown` or `text`; default `markdown`); returns title, content, and `published_time`. |
 | `memory` | `content` | `container_tag`, `metadata`, `task_type`. |
 | `recall` | `query` | `container_tag`, `limit`, `search_mode`, `threshold` (`0.2`-`0.4` broadens recall). |
 | `memory_forget` | `id` or `content` | `container_tag`; `id` is the fact id returned by `recall`. |
@@ -120,9 +129,10 @@ You have access to the following tools through the Not ACE MCP server. Use them 
 1. **Starting a task** → Call `recall(query)` to check for relevant past context, then `taste_context()` to load user preferences.
 2. **Exploring code** → Call `search_context(project_root_path, query)` instead of guessing file locations. This is your primary codebase search tool.
 3. **Understanding architecture** → Call `ask_project(project_root_path, question)` for questions that need codebase + memory context synthesized by LLM.
-4. **Planning work** → Call `plan(project_root_path, requirement)` to generate a grounded todo list before writing code.
-5. **During work** → Call `memory_event(type, content)` to record significant decisions, e.g. `type="user_edited_code"` when the user changes your output.
-6. **Finishing work** → Call `memory(content)` to save important discoveries, patterns, or decisions for future sessions.
+4. **Researching outside the repo** → Call `web_search(query, mode)` for current web context; use `search_papers(query)` for academic sources, `search_images(query)` for visual references, and `web_fetch(url)` to read a known URL.
+5. **Planning work** → Call `plan(project_root_path, requirement)` to generate a grounded todo list before writing code.
+6. **During work** → Call `memory_event(type, content)` to record significant decisions, e.g. `type="user_edited_code"` when the user changes your output.
+7. **Finishing work** → Call `memory(content)` to save important discoveries, patterns, or decisions for future sessions.
 
 ### Tool Reference
 
@@ -130,6 +140,10 @@ You have access to the following tools through the Not ACE MCP server. Use them 
 |------|-------------|
 | `search_context` | Find code by natural language description. **Use this FIRST** before reading files or grepping. |
 | `ask_project` | Ask a question that needs synthesized answer from code + memory. |
+| `web_search` | Search the web. Use `search` for quick results, `broad` for synthesized multi-query coverage, and `deep` for multi-round research. |
+| `search_papers` | Find academic papers on arXiv/SSRN, with abstracts and optional full content extraction. |
+| `search_images` | Find image URLs and descriptions for visual references or examples. |
+| `web_fetch` | Fetch a URL and extract clean markdown/text with title and published time. |
 | `plan` | Turn a requirement into an actionable todo list grounded in the actual codebase. |
 | `recall` | Search past memories. **Use at session start** to load relevant context. |
 | `taste_context` | Get user's coding preferences. **Check before making style/architecture decisions.** |
@@ -146,6 +160,7 @@ You have access to the following tools through the Not ACE MCP server. Use them 
 ### Key Principles
 
 - **search_context over grep**: Semantic search finds relevant code even when you don't know exact names.
+- **web_search for current context**: Use web research when the answer depends on recent or external information.
 - **recall before work**: Previous sessions may have saved critical context about the codebase.
 - **taste before style decisions**: The user's preferences are learned and stored — respect them.
 - **memory after discoveries**: If you learned something important about the codebase, save it for next time.
@@ -321,7 +336,11 @@ not-ace-tool-rs/
 │   │   ├── task_group.rs
 │   │   ├── task.rs
 │   │   ├── plan.rs
-│   │   └── ask_project.rs
+│   │   ├── ask_project.rs
+│   │   ├── web_search.rs
+│   │   ├── search_papers.rs
+│   │   ├── search_images.rs
+│   │   └── web_fetch.rs
 │   └── utils/
 └── tests/
 ```
