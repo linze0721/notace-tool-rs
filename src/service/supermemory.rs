@@ -150,6 +150,122 @@ impl SupermemoryClient {
         self.post("/v4/learning/batch", &request).await
     }
 
+    pub async fn web_search(
+        &self,
+        query: &str,
+        mode: &str,
+        count: Option<usize>,
+        max_rounds: Option<usize>,
+    ) -> Result<Value> {
+        let mut body = serde_json::json!({
+            "query": query,
+            "mode": mode,
+        });
+        if let Some(count) = count {
+            body["count"] = serde_json::json!(count);
+        }
+        if let Some(max_rounds) = max_rounds {
+            body["max_rounds"] = serde_json::json!(max_rounds);
+        }
+
+        let response = self
+            .http
+            .post(self.url("/web-search"))
+            .bearer_auth(&self.config.token)
+            .json(&body)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            return Err(anyhow!("web search failed ({status}): {body}"));
+        }
+
+        Ok(response.json().await?)
+    }
+
+    pub async fn search_papers(
+        &self,
+        query: &str,
+        source: Option<&str>,
+        count: Option<usize>,
+        extract_content: Option<bool>,
+    ) -> Result<Value> {
+        let mut body = serde_json::json!({ "query": query });
+        if let Some(source) = source {
+            body["source"] = serde_json::json!(source);
+        }
+        if let Some(count) = count {
+            body["count"] = serde_json::json!(count);
+        }
+        if let Some(extract_content) = extract_content {
+            body["extract_content"] = serde_json::json!(extract_content);
+        }
+
+        let response = self
+            .http
+            .post(self.url("/search-papers"))
+            .bearer_auth(&self.config.token)
+            .json(&body)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            return Err(anyhow!("search_papers failed ({status}): {body}"));
+        }
+
+        Ok(response.json().await?)
+    }
+
+    pub async fn search_images(&self, query: &str, count: Option<usize>) -> Result<Value> {
+        let mut body = serde_json::json!({ "query": query });
+        if let Some(count) = count {
+            body["count"] = serde_json::json!(count);
+        }
+
+        let response = self
+            .http
+            .post(self.url("/search-images"))
+            .bearer_auth(&self.config.token)
+            .json(&body)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            return Err(anyhow!("search_images failed ({status}): {body}"));
+        }
+
+        Ok(response.json().await?)
+    }
+
+    pub async fn web_fetch(&self, url: &str, format: Option<&str>) -> Result<Value> {
+        let mut body = serde_json::json!({ "url": url });
+        if let Some(format) = format {
+            body["format"] = serde_json::json!(format);
+        }
+
+        let response = self
+            .http
+            .post(self.url("/web-fetch"))
+            .bearer_auth(&self.config.token)
+            .json(&body)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            return Err(anyhow!("web_fetch failed ({status}): {body}"));
+        }
+
+        Ok(response.json().await?)
+    }
+
     pub async fn taste_profile(&self, container_tag: &str, format: &str) -> Result<String> {
         let response = self
             .http

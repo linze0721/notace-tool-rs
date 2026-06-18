@@ -21,14 +21,19 @@ use crate::tools::memory_profile::{MemoryProfileArgs, MemoryProfileToolDef, MEMO
 use crate::tools::plan::{PlanArgs, PlanToolDef, PLAN_TOOL};
 use crate::tools::recall::{RecallArgs, RecallToolDef, RECALL_TOOL};
 use crate::tools::search_context::{SearchContextArgs, SearchContextToolDef, SEARCH_CONTEXT_TOOL};
+use crate::tools::search_images::{SearchImagesArgs, SearchImagesToolDef, SEARCH_IMAGES_TOOL};
+use crate::tools::search_papers::{SearchPapersArgs, SearchPapersToolDef, SEARCH_PAPERS_TOOL};
 use crate::tools::task::{TaskArgs, TaskToolDef, TASK_TOOL};
 use crate::tools::task_group::{TaskGroupArgs, TaskGroupToolDef, TASK_GROUP_TOOL};
 use crate::tools::taste_context::{TasteContextArgs, TasteContextToolDef, TASTE_CONTEXT_TOOL};
 use crate::tools::taste_profile::{TasteProfileArgs, TasteProfileToolDef, TASTE_PROFILE_TOOL};
+use crate::tools::web_fetch::{WebFetchArgs, WebFetchToolDef, WEB_FETCH_TOOL};
+use crate::tools::web_search::{WebSearchArgs, WebSearchTool, WebSearchToolDef, WEB_SEARCH_TOOL};
 use crate::tools::{
     AskProjectTool, BatchLearnTool, EnhancePromptTool, MemoryEventTool, MemoryForgetTool,
     MemoryListTool, MemoryProfileTool, MemoryTool, PlanTool, RecallTool, SearchContextTool,
-    TaskGroupTool, TaskTool, TasteContextTool, TasteProfileTool,
+    SearchImagesTool, SearchPapersTool, TaskGroupTool, TaskTool, TasteContextTool,
+    TasteProfileTool, WebFetchTool,
 };
 
 /// Map tool name aliases to canonical names
@@ -512,6 +517,28 @@ impl McpServer {
             ]);
         }
 
+        // Web search tool — always available (server checks Octen key)
+        tools.push(Tool {
+            name: WEB_SEARCH_TOOL.name.to_string(),
+            description: WEB_SEARCH_TOOL.description.to_string(),
+            input_schema: WebSearchToolDef::get_input_schema(),
+        });
+        tools.push(Tool {
+            name: SEARCH_PAPERS_TOOL.name.to_string(),
+            description: SEARCH_PAPERS_TOOL.description.to_string(),
+            input_schema: SearchPapersToolDef::get_input_schema(),
+        });
+        tools.push(Tool {
+            name: SEARCH_IMAGES_TOOL.name.to_string(),
+            description: SEARCH_IMAGES_TOOL.description.to_string(),
+            input_schema: SearchImagesToolDef::get_input_schema(),
+        });
+        tools.push(Tool {
+            name: WEB_FETCH_TOOL.name.to_string(),
+            description: WEB_FETCH_TOOL.description.to_string(),
+            input_schema: WebFetchToolDef::get_input_schema(),
+        });
+
         let result = ListToolsResult { tools };
 
         match serde_json::to_value(result) {
@@ -567,6 +594,44 @@ impl McpServer {
                     };
 
                 let tool = EnhancePromptTool::new(self.config.clone());
+                let result = tool.execute(args).await;
+                Self::text_tool_response(id, result.text)
+            }
+            "web_search" => {
+                let args: WebSearchArgs = match Self::parse_tool_args(&id, call_params.arguments) {
+                    Ok(args) => args,
+                    Err(response) => return *response,
+                };
+                let tool = WebSearchTool::new(self.config.clone());
+                let result = tool.execute(args).await;
+                Self::text_tool_response(id, result.text)
+            }
+            "search_papers" => {
+                let args: SearchPapersArgs = match Self::parse_tool_args(&id, call_params.arguments)
+                {
+                    Ok(args) => args,
+                    Err(response) => return *response,
+                };
+                let tool = SearchPapersTool::new(self.config.clone());
+                let result = tool.execute(args).await;
+                Self::text_tool_response(id, result.text)
+            }
+            "search_images" => {
+                let args: SearchImagesArgs = match Self::parse_tool_args(&id, call_params.arguments)
+                {
+                    Ok(args) => args,
+                    Err(response) => return *response,
+                };
+                let tool = SearchImagesTool::new(self.config.clone());
+                let result = tool.execute(args).await;
+                Self::text_tool_response(id, result.text)
+            }
+            "web_fetch" => {
+                let args: WebFetchArgs = match Self::parse_tool_args(&id, call_params.arguments) {
+                    Ok(args) => args,
+                    Err(response) => return *response,
+                };
+                let tool = WebFetchTool::new(self.config.clone());
                 let result = tool.execute(args).await;
                 Self::text_tool_response(id, result.text)
             }
@@ -912,6 +977,10 @@ mod tests {
         assert!(names.contains(&"task".to_string()));
         assert!(names.contains(&"plan".to_string()));
         assert!(names.contains(&"ask_project".to_string()));
+        assert!(names.contains(&"web_search".to_string()));
+        assert!(names.contains(&"search_papers".to_string()));
+        assert!(names.contains(&"search_images".to_string()));
+        assert!(names.contains(&"web_fetch".to_string()));
     }
 
     #[test]
@@ -919,11 +988,11 @@ mod tests {
         let _prompt_enhancer = EnvVarGuard::set("PROMPT_ENHANCER", "enabled");
         let server = McpServer::new(test_config(true, true), None);
         let names = listed_tool_names(&server);
-        assert_eq!(names.len(), 15);
+        assert_eq!(names.len(), 19);
 
         let server = McpServer::new(test_config_with_task_tools(true, true, false), None);
         let names = listed_tool_names(&server);
-        assert_eq!(names.len(), 11);
+        assert_eq!(names.len(), 15);
         assert!(!names.contains(&"task_group".to_string()));
         assert!(!names.contains(&"task".to_string()));
         assert!(!names.contains(&"plan".to_string()));
