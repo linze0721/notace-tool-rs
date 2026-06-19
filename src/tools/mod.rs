@@ -2,9 +2,12 @@
 
 pub mod ask_project;
 pub mod batch_learn;
+pub mod clarify;
 pub mod enhance_prompt;
 pub mod goal;
 pub mod goal_phase;
+pub mod handoff;
+pub mod improve;
 pub mod memory;
 pub mod memory_event;
 pub mod memory_forget;
@@ -16,14 +19,18 @@ pub mod search_images;
 pub mod search_papers;
 pub mod taste_context;
 pub mod taste_profile;
+pub mod triage;
 pub mod web_fetch;
 pub mod web_search;
 
 pub use ask_project::AskProjectTool;
 pub use batch_learn::BatchLearnTool;
+pub use clarify::ClarifyTool;
 pub use enhance_prompt::EnhancePromptTool;
 pub use goal::GoalTool;
 pub use goal_phase::GoalPhaseTool;
+pub use handoff::HandoffTool;
+pub use improve::ImproveTool;
 pub use memory::MemoryTool;
 pub use memory_event::MemoryEventTool;
 pub use memory_forget::MemoryForgetTool;
@@ -35,5 +42,6 @@ pub use search_images::SearchImagesTool;
 pub use search_papers::SearchPapersTool;
 pub use taste_context::TasteContextTool;
 pub use taste_profile::TasteProfileTool;
+pub use triage::TriageTool;
 pub use web_fetch::WebFetchTool;
 pub use web_search::WebSearchTool;

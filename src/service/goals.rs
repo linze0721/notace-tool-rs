@@ -21,6 +21,8 @@ pub struct CreateGoalRequest {
     pub blobs: AgentBlobsPayload,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub container_tag: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub clarify_session_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

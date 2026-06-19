@@ -12,9 +12,12 @@ use tracing::{debug, error, info};
 use crate::config::Config;
 use crate::tools::ask_project::{AskProjectArgs, AskProjectToolDef, ASK_PROJECT_TOOL};
 use crate::tools::batch_learn::{BatchLearnArgs, BatchLearnToolDef, BATCH_LEARN_TOOL};
+use crate::tools::clarify::{ClarifyArgs, ClarifyToolDef, CLARIFY_TOOL};
 use crate::tools::enhance_prompt::{EnhancePromptArgs, EnhancePromptToolDef, ENHANCE_PROMPT_TOOL};
 use crate::tools::goal::{GoalArgs, GoalToolDef, GOAL_TOOL};
 use crate::tools::goal_phase::{GoalPhaseArgs, GoalPhaseToolDef, GOAL_PHASE_TOOL};
+use crate::tools::handoff::{HandoffArgs, HandoffToolDef, HANDOFF_TOOL};
+use crate::tools::improve::{ImproveArgs, ImproveToolDef, IMPROVE_TOOL};
 use crate::tools::memory::{MemoryArgs, MemoryToolDef, MEMORY_TOOL};
 use crate::tools::memory_event::{MemoryEventArgs, MemoryEventToolDef, MEMORY_EVENT_TOOL};
 use crate::tools::memory_forget::{MemoryForgetArgs, MemoryForgetToolDef, MEMORY_FORGET_TOOL};
@@ -26,12 +29,14 @@ use crate::tools::search_images::{SearchImagesArgs, SearchImagesToolDef, SEARCH_
 use crate::tools::search_papers::{SearchPapersArgs, SearchPapersToolDef, SEARCH_PAPERS_TOOL};
 use crate::tools::taste_context::{TasteContextArgs, TasteContextToolDef, TASTE_CONTEXT_TOOL};
 use crate::tools::taste_profile::{TasteProfileArgs, TasteProfileToolDef, TASTE_PROFILE_TOOL};
+use crate::tools::triage::{TriageArgs, TriageToolDef, TRIAGE_TOOL};
 use crate::tools::web_fetch::{WebFetchArgs, WebFetchToolDef, WEB_FETCH_TOOL};
 use crate::tools::web_search::{WebSearchArgs, WebSearchTool, WebSearchToolDef, WEB_SEARCH_TOOL};
 use crate::tools::{
-    AskProjectTool, BatchLearnTool, EnhancePromptTool, GoalPhaseTool, GoalTool, MemoryEventTool,
-    MemoryForgetTool, MemoryListTool, MemoryProfileTool, MemoryTool, RecallTool, SearchContextTool,
-    SearchImagesTool, SearchPapersTool, TasteContextTool, TasteProfileTool, WebFetchTool,
+    AskProjectTool, BatchLearnTool, ClarifyTool, EnhancePromptTool, GoalPhaseTool, GoalTool,
+    HandoffTool, ImproveTool, MemoryEventTool, MemoryForgetTool, MemoryListTool, MemoryProfileTool,
+    MemoryTool, RecallTool, SearchContextTool, SearchImagesTool, SearchPapersTool,
+    TasteContextTool, TasteProfileTool, TriageTool, WebFetchTool,
 };
 
 /// Map tool name aliases to canonical names
@@ -510,6 +515,31 @@ impl McpServer {
             ]);
         }
 
+        if self.config.enable_workflow_tools {
+            tools.extend([
+                Tool {
+                    name: CLARIFY_TOOL.name.to_string(),
+                    description: CLARIFY_TOOL.description.to_string(),
+                    input_schema: ClarifyToolDef::get_input_schema(),
+                },
+                Tool {
+                    name: HANDOFF_TOOL.name.to_string(),
+                    description: HANDOFF_TOOL.description.to_string(),
+                    input_schema: HandoffToolDef::get_input_schema(),
+                },
+                Tool {
+                    name: IMPROVE_TOOL.name.to_string(),
+                    description: IMPROVE_TOOL.description.to_string(),
+                    input_schema: ImproveToolDef::get_input_schema(),
+                },
+                Tool {
+                    name: TRIAGE_TOOL.name.to_string(),
+                    description: TRIAGE_TOOL.description.to_string(),
+                    input_schema: TriageToolDef::get_input_schema(),
+                },
+            ]);
+        }
+
         // Web search tool — always available (server checks Octen key)
         tools.push(Tool {
             name: WEB_SEARCH_TOOL.name.to_string(),
@@ -799,6 +829,70 @@ impl McpServer {
                 let result = tool.execute(args).await;
                 Self::text_tool_response(id, result.text)
             }
+            "clarify" => {
+                if !self.config.enable_workflow_tools {
+                    return JsonRpcResponse::error(
+                        id,
+                        -32602,
+                        "Tool 'clarify' is disabled".to_string(),
+                    );
+                }
+                let args: ClarifyArgs = match Self::parse_tool_args(&id, call_params.arguments) {
+                    Ok(args) => args,
+                    Err(response) => return *response,
+                };
+                let tool = ClarifyTool::new(self.config.clone());
+                let result = tool.execute(args).await;
+                Self::text_tool_response(id, result.text)
+            }
+            "handoff" => {
+                if !self.config.enable_workflow_tools {
+                    return JsonRpcResponse::error(
+                        id,
+                        -32602,
+                        "Tool 'handoff' is disabled".to_string(),
+                    );
+                }
+                let args: HandoffArgs = match Self::parse_tool_args(&id, call_params.arguments) {
+                    Ok(args) => args,
+                    Err(response) => return *response,
+                };
+                let tool = HandoffTool::new(self.config.clone());
+                let result = tool.execute(args).await;
+                Self::text_tool_response(id, result.text)
+            }
+            "improve" => {
+                if !self.config.enable_workflow_tools {
+                    return JsonRpcResponse::error(
+                        id,
+                        -32602,
+                        "Tool 'improve' is disabled".to_string(),
+                    );
+                }
+                let args: ImproveArgs = match Self::parse_tool_args(&id, call_params.arguments) {
+                    Ok(args) => args,
+                    Err(response) => return *response,
+                };
+                let tool = ImproveTool::new(self.config.clone());
+                let result = tool.execute(args).await;
+                Self::text_tool_response(id, result.text)
+            }
+            "triage" => {
+                if !self.config.enable_workflow_tools {
+                    return JsonRpcResponse::error(
+                        id,
+                        -32602,
+                        "Tool 'triage' is disabled".to_string(),
+                    );
+                }
+                let args: TriageArgs = match Self::parse_tool_args(&id, call_params.arguments) {
+                    Ok(args) => args,
+                    Err(response) => return *response,
+                };
+                let tool = TriageTool::new(self.config.clone());
+                let result = tool.execute(args).await;
+                Self::text_tool_response(id, result.text)
+            }
             "taste_context" => {
                 if !self.config.enable_taste_tools {
                     return JsonRpcResponse::error(
@@ -905,6 +999,20 @@ mod tests {
         enable_taste_tools: bool,
         enable_goal_tools: bool,
     ) -> Arc<Config> {
+        test_config_with_tool_flags(
+            enable_memory_tools,
+            enable_taste_tools,
+            enable_goal_tools,
+            true,
+        )
+    }
+
+    fn test_config_with_tool_flags(
+        enable_memory_tools: bool,
+        enable_taste_tools: bool,
+        enable_goal_tools: bool,
+        enable_workflow_tools: bool,
+    ) -> Arc<Config> {
         Arc::new(Config {
             base_url: "https://example.com".to_string(),
             token: "test-token".to_string(),
@@ -912,6 +1020,7 @@ mod tests {
             enable_memory_tools,
             enable_taste_tools,
             enable_goal_tools,
+            enable_workflow_tools,
             max_lines_per_blob: 800,
             retrieval_timeout_secs: 60,
             no_adaptive: false,
@@ -950,6 +1059,10 @@ mod tests {
         assert!(names.contains(&"ask_project".to_string()));
         assert!(names.contains(&"goal".to_string()));
         assert!(names.contains(&"goal_phase".to_string()));
+        assert!(names.contains(&"clarify".to_string()));
+        assert!(names.contains(&"handoff".to_string()));
+        assert!(names.contains(&"improve".to_string()));
+        assert!(names.contains(&"triage".to_string()));
         assert!(names.contains(&"web_search".to_string()));
         assert!(names.contains(&"search_papers".to_string()));
         assert!(names.contains(&"search_images".to_string()));
@@ -961,11 +1074,11 @@ mod tests {
         let _prompt_enhancer = EnvVarGuard::set("PROMPT_ENHANCER", "enabled");
         let server = McpServer::new(test_config(true, true), None);
         let names = listed_tool_names(&server);
-        assert_eq!(names.len(), 18);
+        assert_eq!(names.len(), 22);
 
         let server = McpServer::new(test_config_with_goal_tools(true, true, false), None);
         let names = listed_tool_names(&server);
-        assert_eq!(names.len(), 15);
+        assert_eq!(names.len(), 19);
         assert!(!names.contains(&"goal".to_string()));
         assert!(!names.contains(&"goal_phase".to_string()));
         assert!(!names.contains(&"ask_project".to_string()));
@@ -984,6 +1097,19 @@ mod tests {
         assert!(names.contains(&"memory_forget".to_string()));
         assert!(names.contains(&"memory_list".to_string()));
         assert!(names.contains(&"memory_profile".to_string()));
+        assert!(names.contains(&"goal".to_string()));
+        assert!(names.contains(&"ask_project".to_string()));
+    }
+
+    #[test]
+    fn list_tools_hides_workflow_tools_when_config_false() {
+        let server = McpServer::new(test_config_with_tool_flags(true, true, true, false), None);
+        let names = listed_tool_names(&server);
+
+        assert!(!names.contains(&"clarify".to_string()));
+        assert!(!names.contains(&"handoff".to_string()));
+        assert!(!names.contains(&"improve".to_string()));
+        assert!(!names.contains(&"triage".to_string()));
         assert!(names.contains(&"goal".to_string()));
         assert!(names.contains(&"ask_project".to_string()));
     }
@@ -1015,6 +1141,24 @@ mod tests {
                 Some(json!({
                     "name": "memory",
                     "arguments": {"content": "remember this"}
+                })),
+            )
+            .await;
+
+        let error = response.error.expect("disabled tool should return error");
+        assert_eq!(error.code, -32602);
+        assert!(error.message.contains("disabled"));
+    }
+
+    #[tokio::test]
+    async fn rejects_disabled_workflow_tool_call() {
+        let server = McpServer::new(test_config_with_tool_flags(true, true, true, false), None);
+        let response = server
+            .handle_call_tool(
+                Some(json!(1)),
+                Some(json!({
+                    "name": "clarify",
+                    "arguments": {"action": "list"}
                 })),
             )
             .await;
