@@ -2,7 +2,7 @@
 
 [English](README.md) | 简体中文
 
-面向 AI 编程助手的高性能 MCP 服务器。提供代码搜索、AI 增强目标规划、记忆/学习、Web 研究等能力，全部通过 Model Context Protocol 暴露。
+面向 AI 编程助手的高性能 MCP 服务器。提供代码搜索、AI 增强目标规划、智能工作流工具、记忆/学习、Web 研究等能力，全部通过 Model Context Protocol 暴露。
 
 ## 快速开始
 
@@ -18,6 +18,7 @@ npx not-ace-tool-rs --base-url <API_URL> --token <AUTH_TOKEN>
 |---|---|---|
 | **代码搜索** | `search_context` | 自然语言语义搜索代码库 |
 | **目标规划** | `goal`, `goal_phase` | AI 增强的深度规划，阶段分解，3 次自愈，审计验证 |
+| **工作流** | `clarify`, `handoff`, `improve`, `triage` | 需求澄清、跨 session 上下文传递、架构分析、需求分类 |
 | **Prompt 增强** | `enhance_prompt` | 结合代码上下文和对话历史增强 prompt |
 | **记忆与学习** | `memory`, `recall`, `memory_forget`, `memory_list`, `memory_profile`, `memory_event`, `batch_learn` | 持久化记忆与反思学习 |
 | **偏好学习** | `taste_context`, `taste_profile` | 学习并应用用户编码风格偏好 |
@@ -56,6 +57,10 @@ claude mcp add-json not-ace-tool --scope user '{
       "mcp__not-ace-tool__ask_project",
       "mcp__not-ace-tool__goal",
       "mcp__not-ace-tool__goal_phase",
+      "mcp__not-ace-tool__clarify",
+      "mcp__not-ace-tool__handoff",
+      "mcp__not-ace-tool__improve",
+      "mcp__not-ace-tool__triage",
       "mcp__not-ace-tool__web_search",
       "mcp__not-ace-tool__search_papers",
       "mcp__not-ace-tool__search_images",
@@ -107,11 +112,7 @@ startup_timeout_ms = 60000
 
 ### 目标规划（Supergoal）
 
-受 [supergoal](https://github.com/robzilla1738/supergoal) 启发的 AI 增强规划系统。创建目标时，服务端自动：
-1. 从项目索引中检索相关代码上下文
-2. 加载项目记忆（历史经验、失败模式）
-3. 加载用户偏好（编码风格）
-4. 通过 LLM 生成深度规划——包含风险分析、阶段分解和自我批判
+受 [supergoal](https://github.com/robzilla1738/supergoal) 启发的 AI 增强规划系统。创建目标时，服务端自动检索相关代码上下文、加载项目记忆和用户偏好，然后通过 LLM 生成包含风险分析、阶段分解和自我批判的深度规划。
 
 #### `goal`
 
@@ -126,7 +127,10 @@ startup_timeout_ms = 60000
 | `requirement` | string | `create` | 需求描述 |
 | `container_tag` | string | 否 | 记忆容器标签 |
 | `audit_evidence` | object | `audit` | 审计证据 |
+| `clarify_session_id` | string | `create`（可选） | 使用已完成的 clarify session 的 brief 作为增强需求 |
 | `status_filter` | string | `list` | 按状态过滤 |
+
+**目标生命周期：** `created → planning → planned → in_progress → auditing → completed`
 
 #### `goal_phase`
 
@@ -142,11 +146,71 @@ startup_timeout_ms = 60000
 | `spec` | object | `heal` | 修复方案 |
 | `notes` | string | `heal` | 修复说明 |
 
-**目标生命周期：** `created → planning → planned → in_progress → auditing → completed`
-
 **阶段生命周期：** `pending → in_progress → verifying → done`
 
-**失败处理：** 第 1 次 → 搜索记忆中的类似失败并建议重试 → 第 2 次 → 要求提交修复方案 → 第 3 次 → 升级，标记为 escalated
+**失败处理：** 第 1 次 → 搜索记忆中的类似失败并建议重试 → 第 2 次 → 要求提交修复方案 → 第 3 次 → 升级为 escalated
+
+### 工作流工具
+
+受 [AI Hero 技能体系](https://www.aihero.dev/skills) 启发。这些工具利用代码索引、记忆和偏好提供智能工作流辅助，并将学习成果写回以持续改进。
+
+#### `clarify`
+
+AI 驱动的需求澄清，带有上下文感知的推荐。多轮问答产出结构化 brief，可直接用于 goal 创建。自动将术语和架构决策写入记忆。
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `action` | string | 是 | `start`, `answer`, `status`, `list` |
+| `project_root_path` | string | `start` | 项目根路径 |
+| `requirement` | string | `start` | 需要澄清的需求 |
+| `container_tag` | string | 否 | 记忆容器标签 |
+| `session_id` | string | `answer`, `status` | 会话 ID |
+| `answers` | array | `answer` | `[{question_id, answer}]` |
+
+**工作流程：**
+1. `start` — 索引项目、加载记忆/偏好，LLM 生成带推荐的问题
+2. `answer` — 提交答案，LLM 决定继续追问还是生成 brief
+3. Brief 包含精炼需求、决策、术语、ADR、风险标记
+4. 术语和 ADR 自动写入记忆，供后续 session 使用
+
+#### `handoff`
+
+跨 agent session 的上下文传递。将压缩的上下文存入记忆，自动用项目术语和偏好增强。
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `action` | string | 是 | `create`, `load`, `list` |
+| `context` | string | `create` | 当前 session 上下文 |
+| `purpose` | string | `create` | 下个 session 要做什么 |
+| `artifacts` | array | `create`（可选） | 相关文件路径 |
+| `container_tag` | string | 否 | 记忆容器标签 |
+| `handoff_id` | string | `load` | Handoff ID |
+
+#### `improve`
+
+分析代码架构，发现改进机会。基于代码结构、项目历史和用户偏好给出建议。
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `action` | string | 是 | `analyze`, `detail` |
+| `project_root_path` | string | `analyze` | 项目根路径 |
+| `container_tag` | string | 否 | 记忆容器标签 |
+| `candidate_id` | string | `detail` | 改进候选 ID |
+| `focus` | string | `analyze`（可选） | 聚焦分析某个领域 |
+
+#### `triage`
+
+分类需求并评估 agent 执行就绪度。将需求路由到 clarify、goal create 或人工审查。
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `action` | string | 是 | `assess`, `detail` |
+| `project_root_path` | string | `assess` | 项目根路径 |
+| `container_tag` | string | 否 | 记忆容器标签 |
+| `items` | array | `assess` | `[{id, title, description}]` |
+| `item_id` | string | `detail` | 需求 ID |
+
+**分类状态：** `needs-clarify` → 路由到 `clarify` | `ready` → 路由到 `goal create` | `needs-human` → 需要人工判断
 
 ### Prompt 增强
 
@@ -212,7 +276,8 @@ startup_timeout_ms = 60000
 |---|---|
 | `ACE_ENABLE_MEMORY_TOOLS` | 启用/禁用记忆工具（默认：启用） |
 | `ACE_ENABLE_TASTE_TOOLS` | 启用/禁用偏好工具（默认：启用） |
-| `ACE_ENABLE_GOAL_TOOLS` | 启用/禁用 goal/goal_phase 工具（默认：启用） |
+| `ACE_ENABLE_GOAL_TOOLS` | 启用/禁用 goal/goal_phase/ask_project 工具（默认：启用） |
+| `ACE_ENABLE_WORKFLOW_TOOLS` | 启用/禁用 clarify/handoff/improve/triage 工具（默认：启用） |
 | `ACE_CONTAINER_TAG` | 默认记忆容器标签 |
 | `PROMPT_ENHANCER` | 设为 `disabled` 可隐藏 enhance_prompt |
 | `ACE_ENHANCER_ENDPOINT` | Prompt 增强后端：`new`、`old`、`claude`、`openai`、`gemini` |

@@ -2,7 +2,7 @@
 
 English | [简体中文](README-zh-CN.md)
 
-A high-performance MCP server for AI coding assistants. Provides codebase search, AI-augmented goal planning, memory/learning, and web research — all through the Model Context Protocol.
+A high-performance MCP server for AI coding assistants. Provides codebase search, AI-augmented goal planning, intelligent workflow tools, memory/learning, and web research — all through the Model Context Protocol.
 
 ## Quick Start
 
@@ -18,6 +18,7 @@ Supports Linux (x64/ARM64), macOS (x64/ARM64), and Windows (x64/ARM64).
 |---|---|---|
 | **Code Search** | `search_context` | Semantic codebase search using natural language queries |
 | **Goal Planning** | `goal`, `goal_phase` | AI-augmented deep planning with phase decomposition, 3-strike self-healing, and audit |
+| **Workflow** | `clarify`, `handoff`, `improve`, `triage` | Requirement clarification, cross-session context transfer, architecture analysis, backlog triage |
 | **Prompt Enhancement** | `enhance_prompt` | Enriches prompts with codebase context and conversation history |
 | **Memory & Learning** | `memory`, `recall`, `memory_forget`, `memory_list`, `memory_profile`, `memory_event`, `batch_learn` | Persistent memory with reflection and learning |
 | **Taste Preferences** | `taste_context`, `taste_profile` | Learns and applies user coding style preferences |
@@ -56,6 +57,10 @@ Add permissions to `~/.claude/settings.json`:
       "mcp__not-ace-tool__ask_project",
       "mcp__not-ace-tool__goal",
       "mcp__not-ace-tool__goal_phase",
+      "mcp__not-ace-tool__clarify",
+      "mcp__not-ace-tool__handoff",
+      "mcp__not-ace-tool__improve",
+      "mcp__not-ace-tool__triage",
       "mcp__not-ace-tool__web_search",
       "mcp__not-ace-tool__search_papers",
       "mcp__not-ace-tool__search_images",
@@ -107,11 +112,7 @@ Search the codebase using natural language.
 
 ### Goal Planning (Supergoal)
 
-AI-augmented planning system inspired by [supergoal](https://github.com/robzilla1738/supergoal). When creating a goal, the server automatically:
-1. Retrieves relevant code context from the project index
-2. Loads project memory (past learnings, failure patterns)
-3. Loads user taste profile (coding preferences)
-4. Generates a deep plan via LLM with risk analysis, phase decomposition, and self-critique
+AI-augmented planning system inspired by [supergoal](https://github.com/robzilla1738/supergoal). When creating a goal, the server automatically retrieves relevant code context, loads project memory and taste preferences, then generates a deep plan via LLM with risk analysis, phase decomposition, and self-critique.
 
 #### `goal`
 
@@ -126,7 +127,10 @@ Manage the goal lifecycle.
 | `requirement` | string | `create` | What you want to achieve |
 | `container_tag` | string | No | Memory container tag |
 | `audit_evidence` | object | `audit` | Evidence for final audit |
+| `clarify_session_id` | string | `create` (optional) | Use a resolved clarify session's brief as enriched requirement |
 | `status_filter` | string | `list` | Filter by status |
+
+**Goal lifecycle:** `created → planning → planned → in_progress → auditing → completed`
 
 #### `goal_phase`
 
@@ -142,11 +146,71 @@ Manage phase execution with 3-strike self-healing.
 | `spec` | object | `heal` | Healing specification |
 | `notes` | string | `heal` | Healing notes |
 
-**Goal lifecycle:** `created → planning → planned → in_progress → auditing → completed`
-
 **Phase lifecycle:** `pending → in_progress → verifying → done`
 
 **On failure:** strike 1 → memory-assisted retry suggestion → strike 2 → heal spec required → strike 3 → escalated
+
+### Workflow Tools
+
+Inspired by [AI Hero's skill system](https://www.aihero.dev/skills). These tools leverage code index, memory, and taste for intelligent workflow assistance, and write learnings back for continuous improvement.
+
+#### `clarify`
+
+AI-driven requirement clarification with context-aware recommendations. Multi-round Q&A that produces a structured brief for goal creation. Automatically captures terminology and architecture decisions into memory.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `action` | string | Yes | `start`, `answer`, `status`, `list` |
+| `project_root_path` | string | `start` | Project root path |
+| `requirement` | string | `start` | Requirement to clarify |
+| `container_tag` | string | No | Memory container tag |
+| `session_id` | string | `answer`, `status` | Session ID |
+| `answers` | array | `answer` | `[{question_id, answer}]` |
+
+**How it works:**
+1. `start` — indexes project, loads memory/taste, LLM generates questions with recommendations
+2. `answer` — submit answers, LLM decides to ask more or produce a brief
+3. Brief output includes refined requirement, decisions, terminology, ADRs, risk flags
+4. Terminology and ADRs are automatically written to memory for future sessions
+
+#### `handoff`
+
+Create and load context handoffs between agent sessions. Stores compressed context in memory, enriched with project terminology and preferences.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `action` | string | Yes | `create`, `load`, `list` |
+| `context` | string | `create` | Current session context |
+| `purpose` | string | `create` | What the next session should do |
+| `artifacts` | array | `create` (optional) | Relevant file paths |
+| `container_tag` | string | No | Memory container tag |
+| `handoff_id` | string | `load` | Handoff ID |
+
+#### `improve`
+
+Analyze codebase architecture for improvement opportunities. Surfaces friction points based on code structure, project history, and user preferences.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `action` | string | Yes | `analyze`, `detail` |
+| `project_root_path` | string | `analyze` | Project root path |
+| `container_tag` | string | No | Memory container tag |
+| `candidate_id` | string | `detail` | Improvement candidate ID |
+| `focus` | string | `analyze` (optional) | Narrow analysis to specific area |
+
+#### `triage`
+
+Classify requirements and assess readiness for agent execution. Routes items to clarify, goal create, or human review.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `action` | string | Yes | `assess`, `detail` |
+| `project_root_path` | string | `assess` | Project root path |
+| `container_tag` | string | No | Memory container tag |
+| `items` | array | `assess` | `[{id, title, description}]` |
+| `item_id` | string | `detail` | Item ID |
+
+**Triage states:** `needs-clarify` → route to `clarify` | `ready` → route to `goal create` | `needs-human` → requires human judgment
 
 ### Prompt Enhancement
 
@@ -212,7 +276,8 @@ Supports Claude, OpenAI, Gemini, and built-in endpoints via `ACE_ENHANCER_ENDPOI
 |---|---|
 | `ACE_ENABLE_MEMORY_TOOLS` | Enable/disable memory tools (default: enabled) |
 | `ACE_ENABLE_TASTE_TOOLS` | Enable/disable taste tools (default: enabled) |
-| `ACE_ENABLE_GOAL_TOOLS` | Enable/disable goal/goal_phase tools (default: enabled) |
+| `ACE_ENABLE_GOAL_TOOLS` | Enable/disable goal/goal_phase/ask_project tools (default: enabled) |
+| `ACE_ENABLE_WORKFLOW_TOOLS` | Enable/disable clarify/handoff/improve/triage tools (default: enabled) |
 | `ACE_CONTAINER_TAG` | Default memory container tag |
 | `PROMPT_ENHANCER` | Set to `disabled` to hide enhance_prompt |
 | `ACE_ENHANCER_ENDPOINT` | Prompt enhancer backend: `new`, `old`, `claude`, `openai`, `gemini` |

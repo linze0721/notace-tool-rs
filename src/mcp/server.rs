@@ -383,7 +383,7 @@ impl McpServer {
             },
             server_info: ServerInfo {
                 name: "not-ace-tool".to_string(),
-                version: "0.5.1".to_string(),
+                version: "0.5.2".to_string(),
             },
         };
 
