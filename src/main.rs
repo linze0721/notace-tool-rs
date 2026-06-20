@@ -13,6 +13,7 @@ use not_ace_tool::service::supermemory::{
 use serde_json::Value;
 use std::env;
 use std::fs;
+use std::sync::Arc;
 use tracing::{error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -43,7 +44,7 @@ impl MemoryProfileFormatArg {
 #[command(about = "Not ACE MCP server for codebase indexing and semantic search")]
 #[command(group(
     ArgGroup::new("one_shot")
-        .args(["enhance_prompt", "taste_profile", "memory_event", "batch_learn", "index_only"])
+        .args(["enhance_prompt", "taste_profile", "memory_event", "batch_learn", "index_only", "tool"])
         .multiple(false)
 ))]
 struct Args {
@@ -121,6 +122,14 @@ struct Args {
     /// Import prompts from a JSON or JSONL file and exit
     #[arg(long)]
     batch_learn: Option<String>,
+
+    /// Run a single tool by name and exit. Use with --input to provide JSON arguments.
+    #[arg(long)]
+    tool: Option<String>,
+
+    /// JSON arguments for --tool mode
+    #[arg(long)]
+    input: Option<String>,
 }
 
 fn parse_memory_event_json(input: &str, default_container_tag: &str) -> Result<MemoryEventRequest> {
@@ -271,6 +280,126 @@ fn append_session_prompts(
     }
 
     Ok(())
+}
+
+async fn run_tool_cli(
+    config: &Arc<Config>,
+    tool_name: &str,
+    arguments: serde_json::Value,
+) -> Result<String> {
+    macro_rules! run_tool {
+        ($args_ty:path, $tool_ty:path) => {{
+            let args: $args_ty = serde_json::from_value(arguments)?;
+            let tool = <$tool_ty>::new(config.clone());
+            Ok(tool.execute(args).await.text)
+        }};
+    }
+
+    match tool_name {
+        "search_context" => run_tool!(
+            not_ace_tool::tools::search_context::SearchContextArgs,
+            not_ace_tool::tools::SearchContextTool
+        ),
+        "enhance_prompt" => run_tool!(
+            not_ace_tool::tools::enhance_prompt::EnhancePromptArgs,
+            not_ace_tool::tools::EnhancePromptTool
+        ),
+        "ask_project" => run_tool!(
+            not_ace_tool::tools::ask_project::AskProjectArgs,
+            not_ace_tool::tools::AskProjectTool
+        ),
+        "diagnose" => run_tool!(
+            not_ace_tool::tools::diagnose::DiagnoseArgs,
+            not_ace_tool::tools::DiagnoseTool
+        ),
+        "code_review" => run_tool!(
+            not_ace_tool::tools::code_review::CodeReviewArgs,
+            not_ace_tool::tools::CodeReviewTool
+        ),
+        "generate_docs" => run_tool!(
+            not_ace_tool::tools::generate_docs::GenerateDocsArgs,
+            not_ace_tool::tools::GenerateDocsTool
+        ),
+        "memory" => run_tool!(
+            not_ace_tool::tools::memory::MemoryArgs,
+            not_ace_tool::tools::MemoryTool
+        ),
+        "recall" => run_tool!(
+            not_ace_tool::tools::recall::RecallArgs,
+            not_ace_tool::tools::RecallTool
+        ),
+        "memory_forget" => run_tool!(
+            not_ace_tool::tools::memory_forget::MemoryForgetArgs,
+            not_ace_tool::tools::MemoryForgetTool
+        ),
+        "memory_list" => run_tool!(
+            not_ace_tool::tools::memory_list::MemoryListArgs,
+            not_ace_tool::tools::MemoryListTool
+        ),
+        "memory_profile" => run_tool!(
+            not_ace_tool::tools::memory_profile::MemoryProfileArgs,
+            not_ace_tool::tools::MemoryProfileTool
+        ),
+        "memory_event" => run_tool!(
+            not_ace_tool::tools::memory_event::MemoryEventArgs,
+            not_ace_tool::tools::MemoryEventTool
+        ),
+        "batch_learn" => run_tool!(
+            not_ace_tool::tools::batch_learn::BatchLearnArgs,
+            not_ace_tool::tools::BatchLearnTool
+        ),
+        "taste_context" => run_tool!(
+            not_ace_tool::tools::taste_context::TasteContextArgs,
+            not_ace_tool::tools::TasteContextTool
+        ),
+        "taste_profile" => run_tool!(
+            not_ace_tool::tools::taste_profile::TasteProfileArgs,
+            not_ace_tool::tools::TasteProfileTool
+        ),
+        "goal" => run_tool!(
+            not_ace_tool::tools::goal::GoalArgs,
+            not_ace_tool::tools::GoalTool
+        ),
+        "goal_phase" => run_tool!(
+            not_ace_tool::tools::goal_phase::GoalPhaseArgs,
+            not_ace_tool::tools::GoalPhaseTool
+        ),
+        "clarify" => run_tool!(
+            not_ace_tool::tools::clarify::ClarifyArgs,
+            not_ace_tool::tools::ClarifyTool
+        ),
+        "handoff" => run_tool!(
+            not_ace_tool::tools::handoff::HandoffArgs,
+            not_ace_tool::tools::HandoffTool
+        ),
+        "improve" => run_tool!(
+            not_ace_tool::tools::improve::ImproveArgs,
+            not_ace_tool::tools::ImproveTool
+        ),
+        "triage" => run_tool!(
+            not_ace_tool::tools::triage::TriageArgs,
+            not_ace_tool::tools::TriageTool
+        ),
+        "web_search" => run_tool!(
+            not_ace_tool::tools::web_search::WebSearchArgs,
+            not_ace_tool::tools::WebSearchTool
+        ),
+        "search_papers" => run_tool!(
+            not_ace_tool::tools::search_papers::SearchPapersArgs,
+            not_ace_tool::tools::SearchPapersTool
+        ),
+        "search_images" => run_tool!(
+            not_ace_tool::tools::search_images::SearchImagesArgs,
+            not_ace_tool::tools::SearchImagesTool
+        ),
+        "web_fetch" => run_tool!(
+            not_ace_tool::tools::web_fetch::WebFetchArgs,
+            not_ace_tool::tools::WebFetchTool
+        ),
+        _ => Err(anyhow!(
+            "unknown tool: {tool_name}. Available: search_context, enhance_prompt, ask_project, diagnose, code_review, generate_docs, memory, recall, memory_forget, memory_list, memory_profile, memory_event, batch_learn, taste_context, taste_profile, goal, goal_phase, clarify, handoff, improve, triage, web_search, search_papers, search_images, web_fetch"
+        )),
+    }
 }
 
 #[tokio::main]
@@ -436,6 +565,17 @@ async fn main() -> Result<()> {
                 return Err(anyhow::anyhow!("Indexing failed: {}", result.message));
             }
         }
+    }
+
+    // Universal tool CLI mode: run any tool by name
+    if let Some(ref tool_name) = args.tool {
+        let input_json = args.input.as_deref().unwrap_or("{}");
+        let arguments: serde_json::Value =
+            serde_json::from_str(input_json).map_err(|e| anyhow!("invalid --input JSON: {e}"))?;
+
+        let result = run_tool_cli(&config, tool_name, arguments).await?;
+        println!("{result}");
+        return Ok(());
     }
 
     info!("Starting Not ACE MCP server");
