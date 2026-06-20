@@ -34,7 +34,7 @@ impl GenerateDocsToolDef {
                 },
                 "scope": {
                     "type": "string",
-                    "description": "Documentation scope: 'overview' (default), 'module:path/to/module', or 'file:path/to/file'"
+                    "description": "What documentation to generate. Use natural language, e.g.: 'project overview', 'REST API docs', 'security audit', 'onboarding guide', 'architecture diagram description', or any specific request."
                 },
                 "format": { "type": "string", "description": "Output format (default: markdown)" },
                 "container_tag": { "type": "string", "description": "Optional memory container tag" }
