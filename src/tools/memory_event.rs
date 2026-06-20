@@ -9,6 +9,8 @@ use tracing::{error, info};
 use crate::config::Config;
 use crate::service::supermemory::{MemoryEventRequest, SupermemoryClient};
 
+use super::serde_helpers;
+
 /// Tool definition for MCP
 pub struct MemoryEventToolDef {
     pub name: &'static str,
@@ -59,6 +61,7 @@ pub struct MemoryEventArgs {
     #[serde(default, alias = "containerTag")]
     pub container_tag: Option<String>,
     pub source: Option<String>,
+    #[serde(default, deserialize_with = "serde_helpers::string_or_object")]
     pub metadata: Option<Value>,
 }
 

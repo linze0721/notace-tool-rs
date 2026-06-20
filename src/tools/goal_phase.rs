@@ -9,6 +9,8 @@ use tracing::{error, info};
 use crate::config::Config;
 use crate::service::goals::{FailPhaseRequest, GoalsClient, HealPhaseRequest, VerifyPhaseRequest};
 
+use super::serde_helpers;
+
 /// Tool definition for MCP
 pub struct GoalPhaseToolDef {
     pub name: &'static str,
@@ -51,10 +53,13 @@ pub struct GoalPhaseArgs {
     pub action: Option<String>,
     pub goal_id: Option<String>,
     pub phase_id: Option<String>,
+    #[serde(default, deserialize_with = "serde_helpers::string_or_object")]
     pub evidence: Option<serde_json::Value>,
     pub error_detail: Option<String>,
+    #[serde(default, deserialize_with = "serde_helpers::string_or_object")]
     pub spec: Option<serde_json::Value>,
     pub notes: Option<String>,
+    #[serde(default, deserialize_with = "serde_helpers::string_or_object")]
     pub metadata: Option<serde_json::Value>,
 }
 

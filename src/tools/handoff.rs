@@ -9,6 +9,8 @@ use tracing::{error, info};
 use crate::config::Config;
 use crate::service::workflow::{CreateHandoffRequest, WorkflowClient};
 
+use super::serde_helpers;
+
 /// Tool definition for MCP
 pub struct HandoffToolDef {
     pub name: &'static str,
@@ -53,6 +55,7 @@ pub struct HandoffArgs {
     pub container_tag: Option<String>,
     pub context: Option<String>,
     pub purpose: Option<String>,
+    #[serde(default, deserialize_with = "serde_helpers::string_or_vec")]
     pub artifacts: Option<Vec<String>>,
     pub handoff_id: Option<String>,
 }

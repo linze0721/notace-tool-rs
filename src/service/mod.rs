@@ -1,5 +1,6 @@
 //! Service modules for different API providers
 
+pub mod agents;
 pub(crate) mod augment;
 pub(crate) mod claude;
 pub mod common;

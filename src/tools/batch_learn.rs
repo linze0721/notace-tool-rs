@@ -9,6 +9,8 @@ use tracing::{error, info};
 use crate::config::Config;
 use crate::service::supermemory::{BatchLearningRequest, SupermemoryClient};
 
+use super::serde_helpers;
+
 /// Tool definition for MCP
 pub struct BatchLearnToolDef {
     pub name: &'static str,
@@ -41,6 +43,7 @@ pub struct BatchLearnArgs {
     pub source: Option<String>,
     #[serde(default, alias = "containerTag")]
     pub container_tag: Option<String>,
+    #[serde(default, deserialize_with = "serde_helpers::string_or_vec")]
     pub prompts: Option<Vec<String>>,
 }
 

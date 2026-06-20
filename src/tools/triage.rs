@@ -12,6 +12,8 @@ use crate::index::IndexManager;
 use crate::service::goals::AgentBlobsPayload;
 use crate::service::workflow::{AssessRequest, TriageItem, WorkflowClient};
 
+use super::serde_helpers;
+
 /// Tool definition for MCP
 pub struct TriageToolDef {
     pub name: &'static str,
@@ -65,6 +67,7 @@ pub struct TriageArgs {
     pub action: Option<String>,
     pub project_root_path: Option<String>,
     pub container_tag: Option<String>,
+    #[serde(default, deserialize_with = "serde_helpers::string_or_vec")]
     pub items: Option<Vec<TriageItemArg>>,
     pub item_id: Option<String>,
 }

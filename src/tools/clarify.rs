@@ -14,6 +14,8 @@ use crate::service::workflow::{
     AnswerClarifyRequest, ClarifyAnswerInput, StartClarifyRequest, WorkflowClient,
 };
 
+use super::serde_helpers;
+
 /// Tool definition for MCP
 pub struct ClarifyToolDef {
     pub name: &'static str,
@@ -69,6 +71,7 @@ pub struct ClarifyArgs {
     pub requirement: Option<String>,
     pub container_tag: Option<String>,
     pub session_id: Option<String>,
+    #[serde(default, deserialize_with = "serde_helpers::string_or_vec")]
     pub answers: Option<Vec<ClarifyAnswerArg>>,
 }
 

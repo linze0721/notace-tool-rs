@@ -13,7 +13,10 @@ use crate::config::Config;
 use crate::tools::ask_project::{AskProjectArgs, AskProjectToolDef, ASK_PROJECT_TOOL};
 use crate::tools::batch_learn::{BatchLearnArgs, BatchLearnToolDef, BATCH_LEARN_TOOL};
 use crate::tools::clarify::{ClarifyArgs, ClarifyToolDef, CLARIFY_TOOL};
+use crate::tools::code_review::{CodeReviewArgs, CodeReviewToolDef, CODE_REVIEW_TOOL};
+use crate::tools::diagnose::{DiagnoseArgs, DiagnoseToolDef, DIAGNOSE_TOOL};
 use crate::tools::enhance_prompt::{EnhancePromptArgs, EnhancePromptToolDef, ENHANCE_PROMPT_TOOL};
+use crate::tools::generate_docs::{GenerateDocsArgs, GenerateDocsToolDef, GENERATE_DOCS_TOOL};
 use crate::tools::goal::{GoalArgs, GoalToolDef, GOAL_TOOL};
 use crate::tools::goal_phase::{GoalPhaseArgs, GoalPhaseToolDef, GOAL_PHASE_TOOL};
 use crate::tools::handoff::{HandoffArgs, HandoffToolDef, HANDOFF_TOOL};
@@ -33,10 +36,11 @@ use crate::tools::triage::{TriageArgs, TriageToolDef, TRIAGE_TOOL};
 use crate::tools::web_fetch::{WebFetchArgs, WebFetchToolDef, WEB_FETCH_TOOL};
 use crate::tools::web_search::{WebSearchArgs, WebSearchTool, WebSearchToolDef, WEB_SEARCH_TOOL};
 use crate::tools::{
-    AskProjectTool, BatchLearnTool, ClarifyTool, EnhancePromptTool, GoalPhaseTool, GoalTool,
-    HandoffTool, ImproveTool, MemoryEventTool, MemoryForgetTool, MemoryListTool, MemoryProfileTool,
-    MemoryTool, RecallTool, SearchContextTool, SearchImagesTool, SearchPapersTool,
-    TasteContextTool, TasteProfileTool, TriageTool, WebFetchTool,
+    AskProjectTool, BatchLearnTool, ClarifyTool, CodeReviewTool, DiagnoseTool, EnhancePromptTool,
+    GenerateDocsTool, GoalPhaseTool, GoalTool, HandoffTool, ImproveTool, MemoryEventTool,
+    MemoryForgetTool, MemoryListTool, MemoryProfileTool, MemoryTool, RecallTool, SearchContextTool,
+    SearchImagesTool, SearchPapersTool, TasteContextTool, TasteProfileTool, TriageTool,
+    WebFetchTool,
 };
 
 /// Map tool name aliases to canonical names
@@ -383,7 +387,7 @@ impl McpServer {
             },
             server_info: ServerInfo {
                 name: "not-ace-tool".to_string(),
-                version: "0.5.2".to_string(),
+                version: "0.5.0".to_string(),
             },
         };
 
@@ -511,6 +515,21 @@ impl McpServer {
                     name: ASK_PROJECT_TOOL.name.to_string(),
                     description: ASK_PROJECT_TOOL.description.to_string(),
                     input_schema: AskProjectToolDef::get_input_schema(),
+                },
+                Tool {
+                    name: DIAGNOSE_TOOL.name.to_string(),
+                    description: DIAGNOSE_TOOL.description.to_string(),
+                    input_schema: DiagnoseToolDef::get_input_schema(),
+                },
+                Tool {
+                    name: CODE_REVIEW_TOOL.name.to_string(),
+                    description: CODE_REVIEW_TOOL.description.to_string(),
+                    input_schema: CodeReviewToolDef::get_input_schema(),
+                },
+                Tool {
+                    name: GENERATE_DOCS_TOOL.name.to_string(),
+                    description: GENERATE_DOCS_TOOL.description.to_string(),
+                    input_schema: GenerateDocsToolDef::get_input_schema(),
                 },
             ]);
         }
@@ -797,6 +816,58 @@ impl McpServer {
                 let result = tool.execute(args).await;
                 Self::text_tool_response(id, result.text)
             }
+            "diagnose" => {
+                if !self.config.enable_goal_tools {
+                    return JsonRpcResponse::error(
+                        id,
+                        -32602,
+                        "Tool 'diagnose' is disabled".to_string(),
+                    );
+                }
+
+                let args: DiagnoseArgs = match Self::parse_tool_args(&id, call_params.arguments) {
+                    Ok(args) => args,
+                    Err(response) => return *response,
+                };
+                let tool = DiagnoseTool::new(self.config.clone());
+                let result = tool.execute(args).await;
+                Self::text_tool_response(id, result.text)
+            }
+            "code_review" => {
+                if !self.config.enable_goal_tools {
+                    return JsonRpcResponse::error(
+                        id,
+                        -32602,
+                        "Tool 'code_review' is disabled".to_string(),
+                    );
+                }
+
+                let args: CodeReviewArgs = match Self::parse_tool_args(&id, call_params.arguments) {
+                    Ok(args) => args,
+                    Err(response) => return *response,
+                };
+                let tool = CodeReviewTool::new(self.config.clone());
+                let result = tool.execute(args).await;
+                Self::text_tool_response(id, result.text)
+            }
+            "generate_docs" => {
+                if !self.config.enable_goal_tools {
+                    return JsonRpcResponse::error(
+                        id,
+                        -32602,
+                        "Tool 'generate_docs' is disabled".to_string(),
+                    );
+                }
+
+                let args: GenerateDocsArgs = match Self::parse_tool_args(&id, call_params.arguments)
+                {
+                    Ok(args) => args,
+                    Err(response) => return *response,
+                };
+                let tool = GenerateDocsTool::new(self.config.clone());
+                let result = tool.execute(args).await;
+                Self::text_tool_response(id, result.text)
+            }
             "goal" => {
                 if !self.config.enable_goal_tools {
                     return JsonRpcResponse::error(
@@ -1057,6 +1128,9 @@ mod tests {
         assert!(names.contains(&"taste_context".to_string()));
         assert!(names.contains(&"taste_profile".to_string()));
         assert!(names.contains(&"ask_project".to_string()));
+        assert!(names.contains(&"diagnose".to_string()));
+        assert!(names.contains(&"code_review".to_string()));
+        assert!(names.contains(&"generate_docs".to_string()));
         assert!(names.contains(&"goal".to_string()));
         assert!(names.contains(&"goal_phase".to_string()));
         assert!(names.contains(&"clarify".to_string()));
@@ -1074,7 +1148,7 @@ mod tests {
         let _prompt_enhancer = EnvVarGuard::set("PROMPT_ENHANCER", "enabled");
         let server = McpServer::new(test_config(true, true), None);
         let names = listed_tool_names(&server);
-        assert_eq!(names.len(), 22);
+        assert_eq!(names.len(), 25);
 
         let server = McpServer::new(test_config_with_goal_tools(true, true, false), None);
         let names = listed_tool_names(&server);
@@ -1082,6 +1156,9 @@ mod tests {
         assert!(!names.contains(&"goal".to_string()));
         assert!(!names.contains(&"goal_phase".to_string()));
         assert!(!names.contains(&"ask_project".to_string()));
+        assert!(!names.contains(&"diagnose".to_string()));
+        assert!(!names.contains(&"code_review".to_string()));
+        assert!(!names.contains(&"generate_docs".to_string()));
     }
 
     #[test]

@@ -13,6 +13,8 @@ use crate::service::goals::{
     AgentBlobsPayload, AuditGoalRequest, CreateGoalRequest, GoalsClient, ListGoalsRequest,
 };
 
+use super::serde_helpers;
+
 /// Tool definition for MCP
 pub struct GoalToolDef {
     pub name: &'static str,
@@ -61,6 +63,7 @@ pub struct GoalArgs {
     pub name: Option<String>,
     pub requirement: Option<String>,
     pub container_tag: Option<String>,
+    #[serde(default, deserialize_with = "serde_helpers::string_or_object")]
     pub audit_evidence: Option<serde_json::Value>,
     pub status_filter: Option<String>,
     pub clarify_session_id: Option<String>,
