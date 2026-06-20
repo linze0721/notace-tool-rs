@@ -4,7 +4,7 @@ One MCP server that gives AI coding agents searchable code context, planning, me
 
 English | [简体中文](README-zh-CN.md)
 
-not-ace-tool-rs is a high-performance MCP server for AI coding assistants. It exposes codebase search, AI-augmented goal planning, intelligent workflow tools, persistent memory/learning, taste preferences, and web research through the Model Context Protocol.
+not-ace-tool-rs is a high-performance tool server for AI coding assistants. It exposes codebase search, AI-augmented goal planning, intelligent workflow tools, persistent memory/learning, taste preferences, and web research through the Model Context Protocol and a universal one-shot CLI mode.
 
 ## Quick Start
 
@@ -14,16 +14,17 @@ Run the server once with your API URL and auth token:
 npx not-ace-tool-rs --base-url <API_URL> --token <AUTH_TOKEN>
 ```
 
-What happens: `npx` downloads the right platform package, starts `not-ace-tool-rs`, connects it to your API, and serves MCP tools over stdio. For day-to-day use, add it to your MCP client so your assistant can launch it automatically.
+What happens: `npx` downloads the right platform package, starts `not-ace-tool-rs`, connects it to your API, and serves MCP tools over stdio. For day-to-day use, add it to your MCP client so your assistant can launch it automatically. For one-off commands without MCP, see [CLI Mode](#cli-mode).
 
 Supports Linux (x64/ARM64), macOS (x64/ARM64), and Windows (x64/ARM64).
 
-## What's New in v0.6.0
+## What's New in v0.7
 
-- Added `diagnose` for error diagnosis using memory, code search, and web research, with solutions saved back to memory.
-- Added `code_review` for reviewing diffs against codebase context, project memory, and taste preferences.
-- Added `generate_docs` for project, module, and file documentation generated from codebase analysis.
-- Improved Serde argument parsing for complex MCP arguments: arrays and objects can arrive as native JSON values or as stringified JSON.
+- Universal CLI mode: all 25 tools can run directly from the command line with `--tool` and `--input`, without starting an MCP client.
+- Added a `skills/` directory with 25 tool-specific `SKILL.md` files. Each skill explains when to use the tool and how to run it through MCP, CLI, or manually.
+- `generate_docs` now accepts any free-form natural-language `scope`, such as `REST API documentation`, `security audit report`, `onboarding guide for new developers`, or `用中文写项目入门指南`.
+- The smart-agent tools `diagnose`, `code_review`, and `generate_docs` are available in both MCP and CLI mode.
+- Lenient Serde argument parsing remains supported for complex arguments: arrays and objects can arrive as native JSON values or as stringified JSON.
 
 ## What It Does
 
@@ -40,7 +41,7 @@ The table below is the fastest way to understand the tool surface. Start with th
 | **Project Q&A** | `ask_project` | Answers questions grounded in codebase context and memory |
 | **Smart Debugging** | `diagnose` | Diagnoses errors using memory, code search, and web — auto-saves solutions |
 | **Code Review** | `code_review` | Reviews code diffs for risks, style consistency, and issues |
-| **Doc Generation** | `generate_docs` | Generates project/module/file documentation from codebase analysis |
+| **Doc Generation** | `generate_docs` | Generates free-form documentation and reports from codebase analysis |
 | **Web Research** | `web_search`, `search_papers`, `search_images`, `web_fetch` | Web search, academic paper search, image search, page fetching |
 
 ## MCP Client Setup
@@ -118,9 +119,39 @@ env = { RUST_LOG = "info" }
 startup_timeout_ms = 60000
 ```
 
+## CLI Mode
+
+All 25 tools can run as one-off command-line calls without MCP. Use the same tool names and JSON parameter names shown in the tool reference.
+
+```bash
+not-ace-tool-rs --tool <name> --input '<json>'
+```
+
+In a plain shell, add the same connection flags used in Quick Start:
+
+```bash
+not-ace-tool-rs --base-url <API_URL> --token <AUTH_TOKEN> --tool <name> --input '<json>'
+```
+
+Examples below show the tool-specific part:
+
+```bash
+not-ace-tool-rs --tool diagnose --input '{"error_message": "TypeError: Cannot read properties of undefined"}'
+not-ace-tool-rs --tool code_review --input '{"diff": "..."}'
+not-ace-tool-rs --tool generate_docs --input '{"project_root_path": ".", "scope": "REST API docs"}'
+not-ace-tool-rs --tool recall --input '{"query": "auth flow"}'
+not-ace-tool-rs --tool web_search --input '{"query": "rust async best practices"}'
+```
+
+## Skills
+
+The repository includes a `skills/` directory with 25 `SKILL.md` files, one per tool. Each skill explains when to use the tool, how to call it through MCP, how to run it through CLI mode, and how to complete the task manually if the tool is unavailable.
+
+These skill files are for source checkouts and agent workflows. They are in the repo, but they are **not included in the npm package**.
+
 ## Tool Reference
 
-The reference is grouped by the job you are trying to do. Each group starts with why you would use it, then lists the exact tool names and parameter names for MCP calls.
+The reference is grouped by the job you are trying to do. Each group starts with why you would use it, then lists the exact tool names and parameter names for MCP calls or CLI `--input` JSON.
 
 ### Codebase Context
 
@@ -318,12 +349,12 @@ Review code diffs for risks, style consistency, and issues. The tool analyzes co
 
 #### `generate_docs`
 
-Generate project, module, or file documentation based on codebase search and project memory. Supports different scopes and automatically saves generated docs to memory.
+Generate documentation or reports from codebase search and project memory. The `scope` can be any natural-language request, so it can produce project overviews, REST API documentation, security audit reports, onboarding guides, Chinese documentation, or other focused docs. Generated docs are automatically saved to memory.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `project_root_path` | string | Yes | Project root path |
-| `scope` | string | No | `overview` (default), `module:path/to/module`, or `file:path/to/file` |
+| `scope` | string | No | Free-form documentation request, e.g. `REST API documentation`, `security audit report`, `onboarding guide for new developers`, or `用中文写项目入门指南` |
 | `format` | string | No | Output format (default: `markdown`) |
 | `container_tag` | string | No | Memory container tag |
 
@@ -345,6 +376,8 @@ Use these tools when the answer depends on current docs, community examples, pap
 | `--base-url` | API base URL |
 | `--token` | Authentication token |
 | `--transport` | Transport framing: `auto` (default), `lsp`, `line` |
+| `--tool` | Run a single tool by name and exit |
+| `--input` | JSON arguments for `--tool` mode (defaults to `{}`) |
 | `--index-only` | Index current directory and exit |
 | `--enhance-prompt` | Enhance a prompt and exit |
 | `--container-tag` | Memory container tag (default: `default`) |
